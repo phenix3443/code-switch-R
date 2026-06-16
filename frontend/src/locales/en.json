@@ -831,18 +831,16 @@
     },
     "skill": {
       "hero": {
-        "eyebrow": "Skill Library",
-        "title": "Claude Skill",
-        "lead": "Fetch Claude skills from the managed repositories. Click the top-right button to add more sources."
-      },
-      "platform": {
-        "claude": "Claude Code",
-        "codex": "Codex"
+        "eyebrow": "Skills Workspace",
+        "title": "Manage Unified Local Skills",
+        "lead": "All skills are installed into ~/.agent/skills, then exposed to Claude and Codex through linked entry directories.",
+        "installedCount": "installed",
+        "recommendedCount": "recommended"
       },
       "groups": {
-        "project": "Project Skills",
-        "user": "User Skills",
-        "available": "Available Skills"
+        "installed": "LOCAL - INSTALLED",
+        "recommended": "RECOMMENDED",
+        "unknownSource": "Local / Unknown Source"
       },
       "actions": {
         "back": "Back to home",
@@ -854,36 +852,132 @@
         "installError": "Failed to install {name}. Please retry",
         "uninstallError": "Failed to uninstall {name}. Please retry",
         "toggle": "Enable/Disable",
-        "viewContent": "View Content",
-        "hideContent": "Hide Content",
-        "openFolder": "Open Folder",
+        "openFolder": "Open ~/.agent/skills",
         "loadFailed": "Failed to load content",
-        "toggleError": "Failed to toggle skill status"
+        "toggleError": "Failed to toggle skill status",
+        "more": "More actions",
+        "repairLinks": "Repair links",
+        "repairing": "Repairing...",
+        "repairSuccess": "Skill links were checked and repaired",
+        "repairError": "Failed to repair links. Check the directory state and retry.",
+        "viewBackups": "View backups",
+        "viewConflicts": "View conflicts",
+        "disable": "Disable",
+        "enable": "Enable",
+        "disableDropdown": "Disable ▾",
+        "enableDropdown": "Enable",
+        "uninstallDropdown": "Uninstall ▾",
+        "openSkillFolder": "Open skill folder",
+        "openRepo": "Open repository",
+        "confirmUninstall": "Uninstall {name}?",
+        "uninstallSuccess": "{name} was uninstalled",
+        "enableSuccess": "{name} was enabled",
+        "disableSuccess": "{name} was disabled",
+        "saveSuccess": "SKILL.md saved",
+        "saveError": "Failed to save SKILL.md"
       },
       "list": {
-        "title": "Available skills",
-        "subtitle": "Metadata is parsed from each SKILL.md front matter.",
         "loading": "Loading skills...",
-        "empty": "No skills detected in the repository.",
+        "empty": "No skills to show right now.",
         "error": "Failed to load skills. Please check your network and retry.",
         "noDescription": "SKILL.md does not include a description",
         "missingRepo": "Missing repository information for this skill",
-        "noInstalled": "No installed skills"
+        "noInstalled": "No installed skills",
+        "noRecommended": "No recommended skills available"
       },
       "install": {
-        "title": "Choose Install Location",
-        "desc": "Install {name} to:",
-        "locationLabel": "Install Location",
-        "userLevel": "User Level (Global)",
-        "userLevelDesc": "~/.{platform}/skills/",
-        "projectLevel": "Project Level (Current Directory)",
-        "projectLevelDesc": "./.{platform}/skills/",
-        "gitWarning": "Project skills may need to be added to .gitignore",
         "installing": "Installing...",
-        "confirm": "Confirm Install"
+        "linksRequired": "Skill links are unhealthy. Repair Claude/Codex links before installing.",
+        "success": "{name} was installed into ~/.agent/skills"
       },
       "license": {
         "complete": "Complete terms in {file}"
+      },
+      "badges": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "conflict": "Conflict"
+      },
+      "search": {
+        "placeholder": "Search skills",
+        "clear": "Clear",
+        "filters": {
+          "all": "All",
+          "enabled": "Enabled",
+          "conflict": "Conflict"
+        }
+      },
+      "status": {
+        "userSkills": "User Skills directory",
+        "claudeLink": "Claude link",
+        "codexLink": "Codex link",
+        "linked": "Linked",
+        "missing": "Missing",
+        "notDetected": "Not detected",
+        "skillCount": "{count} skills"
+      },
+      "statusMap": {
+        "linked": "Linked",
+        "missing": "Missing",
+        "conflict": "Conflict",
+        "repair_failed": "Repair failed",
+        "unsupported": "Unsupported"
+      },
+      "summary": {
+        "title": "Migration & backups",
+        "healthy": "Links are healthy and skills are unified under the user directory",
+        "linksNeedRepair": "Detected unhealthy links. Repair is required first.",
+        "conflictDetected": "{count} migration conflict records detected",
+        "lastBackup": "Last backup",
+        "lastMigration": "Last migration",
+        "conflicts": "Conflicts",
+        "none": "None",
+        "loading": "Loading...",
+        "migrations": "Status & migration",
+        "unknownRecord": "Unnamed record",
+        "noMessage": "No extra message",
+        "noMigrations": "No related migration records",
+        "unknownStatus": "Unknown status"
+      },
+      "migrationStatus": {
+        "migrated": "Migrated",
+        "duplicate": "Deduplicated",
+        "conflict": "Conflict",
+        "linked": "Linked",
+        "missing": "Missing",
+        "repair_failed": "Repair failed",
+        "unsupported": "Unsupported"
+      },
+      "detail": {
+        "emptyTitle": "Select a skill from the left",
+        "emptyDesc": "Details, SKILL.md, link state, and migration history will appear here.",
+        "availableContentPlaceholder": "Recommended skills do not have local SKILL.md content until they are installed."
+      },
+      "tabs": {
+        "overview": "Overview",
+        "content": "SKILL.md",
+        "status": "Status & migration",
+        "contentHelp": "Edit SKILL.md directly from the unified skills directory"
+      },
+      "info": {
+        "installation": "Installation",
+        "directory": "Directory",
+        "source": "Source",
+        "branch": "Branch",
+        "links": "Link status",
+        "resources": "Resources",
+        "readme": "README"
+      },
+      "backups": {
+        "title": "Backup records",
+        "subtitle": "These entries come from ~/.code-switch/backups/skills.",
+        "empty": "No backup records yet.",
+        "open": "Open folder"
+      },
+      "conflicts": {
+        "title": "Migration conflicts",
+        "subtitle": "Skills with the same directory but different content are never merged automatically.",
+        "empty": "No migration conflicts."
       },
       "repos": {
         "open": "Manage repositories",
@@ -897,6 +991,8 @@
         "loadError": "Failed to load repositories",
         "addError": "Failed to add repository",
         "removeError": "Failed to remove repository",
+        "addSuccess": "Repository added",
+        "removeSuccess": "Repository removed",
         "formError": "Owner and repository are required",
         "loading": "Loading repositories...",
         "empty": "No repositories configured.",

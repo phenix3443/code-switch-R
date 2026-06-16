@@ -66,6 +66,15 @@ type GroupedSkills struct {
 	Available []SkillGroup `json:"available"`
 }
 
+type SkillDiagnostics struct {
+	UserSkillsPath string            `json:"user_skills_path"`
+	BackupRoot     string            `json:"backup_root"`
+	ClaudeLinkPath string            `json:"claude_link_path"`
+	CodexLinkPath  string            `json:"codex_link_path"`
+	Backups        []backupRecord    `json:"backups"`
+	Migrations     []migrationRecord `json:"migrations"`
+}
+
 type skillMetadata struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
@@ -688,6 +697,71 @@ func (ss *SkillService) OpenUserSkillsFolder() error {
 		return err
 	}
 	return OpenInExplorer(ss.installDir)
+}
+
+// OpenInstalledSkillFolder 打开已安装技能目录
+func (ss *SkillService) OpenInstalledSkillFolder(directory string) error {
+	directory = strings.TrimSpace(directory)
+	if directory == "" {
+		return errors.New("skill directory 不能为空")
+	}
+	return OpenInExplorer(filepath.Join(ss.installDir, directory))
+}
+
+// OpenPlatformSkillsLink 打开平台 skills 入口；若链接不存在，则打开父目录。
+func (ss *SkillService) OpenPlatformSkillsLink(platform string) error {
+	linkPath := getPlatformSkillsLinkPath(platform)
+	if linkPath == "" {
+		return errors.New("未知的平台")
+	}
+
+	if _, err := os.Lstat(linkPath); err == nil {
+		return OpenInExplorer(linkPath)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	parent := filepath.Dir(linkPath)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return err
+	}
+	return OpenInExplorer(parent)
+}
+
+// OpenSkillBackup 打开备份目录
+func (ss *SkillService) OpenSkillBackup(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return errors.New("备份路径不能为空")
+	}
+	return OpenInExplorer(path)
+}
+
+// GetSkillDiagnostics 返回 links/migrations/backups 的只读诊断数据。
+func (ss *SkillService) GetSkillDiagnostics() (SkillDiagnostics, error) {
+	store, err := ss.loadStore()
+	if err != nil {
+		return SkillDiagnostics{}, err
+	}
+
+	backups := append([]backupRecord(nil), store.Backups...)
+	migrations := append([]migrationRecord(nil), store.Migrations...)
+
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].CreatedAt.After(backups[j].CreatedAt)
+	})
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].CreatedAt.After(migrations[j].CreatedAt)
+	})
+
+	return SkillDiagnostics{
+		UserSkillsPath: getUserSkillsPath(),
+		BackupRoot:     getSkillBackupRoot(),
+		ClaudeLinkPath: getPlatformSkillsLinkPath(skillPlatformClaude),
+		CodexLinkPath:  getPlatformSkillsLinkPath(skillPlatformCodex),
+		Backups:        backups,
+		Migrations:     migrations,
+	}, nil
 }
 
 // Repository management ----------------------------------------------------

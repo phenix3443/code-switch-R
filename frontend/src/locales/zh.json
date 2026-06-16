@@ -832,18 +832,16 @@
     },
     "skill": {
       "hero": {
-        "eyebrow": "Skill 仓库",
-        "title": "Claude Skill",
-        "lead": "从 Skill 仓库中获取 Claude Skill，点击右上角按钮可添加更多 Skill 仓库。"
-      },
-      "platform": {
-        "claude": "Claude Code",
-        "codex": "Codex"
+        "eyebrow": "Skills Workspace",
+        "title": "统一管理本地 Skills",
+        "lead": "所有 skills 统一安装到 ~/.agent/skills，并通过 Claude/Codex 入口目录映射到同一套内容。",
+        "installedCount": "已安装",
+        "recommendedCount": "推荐"
       },
       "groups": {
-        "project": "项目级技能",
-        "user": "用户级技能",
-        "available": "可用技能"
+        "installed": "LOCAL - INSTALLED",
+        "recommended": "RECOMMENDED",
+        "unknownSource": "Local / Unknown Source"
       },
       "actions": {
         "back": "返回首页",
@@ -855,36 +853,132 @@
         "installError": "安装 {name} 失败，请重试",
         "uninstallError": "卸载 {name} 失败，请重试",
         "toggle": "启用/禁用",
-        "viewContent": "查看内容",
-        "hideContent": "收起内容",
-        "openFolder": "打开文件夹",
+        "openFolder": "打开 ~/.agent/skills",
         "loadFailed": "加载内容失败",
-        "toggleError": "切换技能状态失败"
+        "toggleError": "切换技能状态失败",
+        "more": "更多操作",
+        "repairLinks": "修复链接",
+        "repairing": "修复中...",
+        "repairSuccess": "链接状态已重新检查并修复",
+        "repairError": "修复链接失败，请检查目录状态后重试",
+        "viewBackups": "查看备份",
+        "viewConflicts": "查看冲突",
+        "disable": "禁用",
+        "enable": "启用",
+        "disableDropdown": "禁用 ▾",
+        "enableDropdown": "启用",
+        "uninstallDropdown": "卸载 ▾",
+        "openSkillFolder": "打开技能目录",
+        "openRepo": "打开仓库",
+        "confirmUninstall": "确认卸载 {name}？",
+        "uninstallSuccess": "{name} 已卸载",
+        "enableSuccess": "{name} 已启用",
+        "disableSuccess": "{name} 已禁用",
+        "saveSuccess": "SKILL.md 已保存",
+        "saveError": "保存 SKILL.md 失败"
       },
       "list": {
-        "title": "可用技能",
-        "subtitle": "描述信息来源于各目录内 SKILL.md 的 front matter。",
         "loading": "正在加载技能...",
-        "empty": "仓库中没有可用技能。",
+        "empty": "当前没有可展示的 skills。",
         "error": "技能列表加载失败，请检查网络后重试。",
         "noDescription": "SKILL.md 未提供描述",
         "missingRepo": "缺少对应的仓库信息，无法安装",
-        "noInstalled": "当前没有已安装的技能"
+        "noInstalled": "当前没有已安装的 skills",
+        "noRecommended": "当前没有可安装的推荐 skills"
       },
       "install": {
-        "title": "选择安装位置",
-        "desc": "将 {name} 安装到：",
-        "locationLabel": "安装位置",
-        "userLevel": "用户级（全局）",
-        "userLevelDesc": "~/.{platform}/skills/",
-        "projectLevel": "项目级（当前目录）",
-        "projectLevelDesc": "./.{platform}/skills/",
-        "gitWarning": "项目级技能可能需要添加到 .gitignore",
         "installing": "安装中...",
-        "confirm": "确认安装"
+        "linksRequired": "当前链接状态异常，请先修复 Claude/Codex skills 链接再安装。",
+        "success": "{name} 已安装到 ~/.agent/skills"
       },
       "license": {
         "complete": "完整条款见 {file}"
+      },
+      "badges": {
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "conflict": "冲突"
+      },
+      "search": {
+        "placeholder": "Search skills",
+        "clear": "清除",
+        "filters": {
+          "all": "全部",
+          "enabled": "已启用",
+          "conflict": "冲突"
+        }
+      },
+      "status": {
+        "userSkills": "User Skills 目录",
+        "claudeLink": "Claude 链接",
+        "codexLink": "Codex 链接",
+        "linked": "已链接",
+        "missing": "缺失",
+        "notDetected": "未检测",
+        "skillCount": "{count} 个 skills"
+      },
+      "statusMap": {
+        "linked": "已链接",
+        "missing": "缺失",
+        "conflict": "冲突",
+        "repair_failed": "修复失败",
+        "unsupported": "不支持"
+      },
+      "summary": {
+        "title": "迁移与备份",
+        "healthy": "当前 links 健康，skills 已统一到 user 目录",
+        "linksNeedRepair": "检测到 skills 链接异常，需要先修复",
+        "conflictDetected": "检测到 {count} 条迁移冲突记录",
+        "lastBackup": "最近备份",
+        "lastMigration": "最近迁移",
+        "conflicts": "冲突数",
+        "none": "无",
+        "loading": "加载中...",
+        "migrations": "状态与迁移",
+        "unknownRecord": "未命名记录",
+        "noMessage": "无附加说明",
+        "noMigrations": "当前没有相关迁移记录",
+        "unknownStatus": "未知状态"
+      },
+      "migrationStatus": {
+        "migrated": "已迁移",
+        "duplicate": "已去重",
+        "conflict": "冲突",
+        "linked": "已链接",
+        "missing": "缺失",
+        "repair_failed": "修复失败",
+        "unsupported": "不支持"
+      },
+      "detail": {
+        "emptyTitle": "选择左侧 skill 查看详情",
+        "emptyDesc": "这里会显示说明、SKILL.md、链接状态和迁移记录。",
+        "availableContentPlaceholder": "未安装的推荐项暂不提供本地 SKILL.md 内容。"
+      },
+      "tabs": {
+        "overview": "说明",
+        "content": "SKILL.md",
+        "status": "状态 & 迁移",
+        "contentHelp": "直接编辑统一目录中的 SKILL.md"
+      },
+      "info": {
+        "installation": "安装信息",
+        "directory": "目录名",
+        "source": "来源",
+        "branch": "分支",
+        "links": "链接状态",
+        "resources": "资源",
+        "readme": "README"
+      },
+      "backups": {
+        "title": "备份记录",
+        "subtitle": "以下记录来自 ~/.code-switch/backups/skills。",
+        "empty": "当前没有备份记录。",
+        "open": "打开目录"
+      },
+      "conflicts": {
+        "title": "迁移冲突",
+        "subtitle": "同名但内容不同的 skills 不会被自动合并，请手动处理。",
+        "empty": "当前没有迁移冲突。"
       },
       "repos": {
         "open": "管理仓库",
@@ -898,6 +992,8 @@
         "loadError": "仓库列表加载失败",
         "addError": "新增仓库失败",
         "removeError": "删除仓库失败",
+        "addSuccess": "仓库已添加",
+        "removeSuccess": "仓库已删除",
         "formError": "请填写所有者和仓库名称",
         "loading": "正在加载仓库...",
         "empty": "当前没有配置任何仓库。",
