@@ -151,6 +151,19 @@ func NewSkillService() *SkillService {
 	}
 }
 
+// Start Wails 生命周期方法：启动时执行一次 skills 链接修复/迁移检查。
+func (ss *SkillService) Start() error {
+	if err := ss.EnsureSkillLinks(); err != nil {
+		log.Printf("skill links startup check failed: %v", err)
+	}
+	return nil
+}
+
+// Stop Wails 生命周期方法
+func (ss *SkillService) Stop() error {
+	return nil
+}
+
 func getUserSkillsPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {

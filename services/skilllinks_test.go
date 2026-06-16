@@ -228,6 +228,46 @@ func TestBackupPlatformDirCopiesOriginalContent(t *testing.T) {
 	}
 }
 
+func TestSkillServiceStartEnsuresLinksOnStartup(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	if err := ss.Start(); err != nil {
+		t.Fatalf("Start() 返回错误: %v", err)
+	}
+
+	status := ss.GetSkillLinkStatus()
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+}
+
+func TestSkillServiceStartDoesNotBlockOnMigrationConflict(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	createTestSkill(t, getUserSkillsPath(), "shared", "Shared", "user version")
+	createTestSkill(t, getPlatformSkillsLinkPath(skillPlatformClaude), "shared", "Shared", "claude version")
+
+	ss := NewSkillService()
+	if err := ss.Start(); err != nil {
+		t.Fatalf("期望启动阶段冲突不阻断应用，得到错误: %v", err)
+	}
+
+	status := ss.GetSkillLinkStatus()
+	if status.Claude.Status != skillLinkStatusConflict {
+		t.Fatalf("期望冲突状态被保留给 UI，得到 %#v", status.Claude)
+	}
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	if !hasMigrationStatus(store.Migrations, skillPlatformClaude, "shared", skillMigrationStatusConflict) {
+		t.Fatalf("期望启动后仍记录 conflict migration，得到 %#v", store.Migrations)
+	}
+}
+
 func createTestSkill(t *testing.T, root, directory, name, description string) {
 	t.Helper()
 

@@ -57,6 +57,38 @@ go test ./services/... -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
 
+## 🧩 Skills 统一目录重构测试
+
+### 运行 skills 相关测试
+```bash
+# 运行所有 skills 测试
+go test ./services/... -run 'TestSkill|TestSkillLinks' -v
+
+# 仅验证软链接/迁移/备份逻辑
+go test ./services/... -run TestSkillLinks -v
+
+# 验证启动时自动执行 links 检查
+go test ./services/... -run TestSkillServiceStart -v
+```
+
+### skills 覆盖重点
+
+#### skillservice_test.go
+- ✅ 旧 `skill.json` 状态迁移到 `Provenance`
+- ✅ 统一目录 `~/.agent/skills` 的安装 / 卸载 / 内容读写
+- ✅ 目录来源冲突阻断
+- ✅ `ToggleSkill` 将 override 投影回 `SKILL.md`
+- ✅ installed / available skills 的来源分组
+
+#### skilllinks_test.go
+- ✅ clean state 下自动创建 Claude/Codex 链接
+- ✅ 从原始平台目录迁移到 `~/.agent/skills`
+- ✅ 同名不同内容冲突记录
+- ✅ 双平台重复内容去重
+- ✅ 备份记录生成
+- ✅ `EnsureSkillLinks()` reconcile `EnabledOverrides`
+- ✅ `SkillService.Start()` 启动时自动执行 links 检查，冲突不阻断启动
+
 ## 🎯 测试覆盖范围
 
 ### providerservice_test.go
@@ -254,7 +286,6 @@ BenchmarkReplaceModelInRequestBody-8     500000   3000 ns/op  512 B/op    5 allo
 ## 🎓 下一步
 
 测试通过后，建议：
-1. 📝 更新 CLAUDE.md 文档
-2. 🎨 开发前端 UI 组件
-3. 🔧 创建用户配置示例
-4. 🚀 在实际环境中测试降级功能
+1. 📝 同步 skills 统一目录相关文档
+2. 🧪 在 Windows 环境补充 junction/权限链路验证
+3. 🚀 在实际用户目录上验证首次迁移与备份流程
