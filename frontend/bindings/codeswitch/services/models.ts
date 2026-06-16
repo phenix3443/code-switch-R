@@ -446,7 +446,7 @@ export class CLIConfig {
     /**
      * Gemini .env 内容
      */
-    "envContent"?: { [_ in string]?: string };
+    "envContent"?: { [_: string]: string };
 
     /**
      * 配置文件路径
@@ -456,7 +456,7 @@ export class CLIConfig {
     /**
      * 可编辑字段的当前值
      */
-    "editable"?: { [_ in string]?: any };
+    "editable"?: { [_: string]: any };
 
     /** Creates a new CLIConfig instance. */
     constructor($$source: Partial<CLIConfig> = {}) {
@@ -632,7 +632,7 @@ export enum CLIPlatform {
  * CLITemplate CLI 配置模板
  */
 export class CLITemplate {
-    "template": { [_ in string]?: any };
+    "template": { [_: string]: any };
     "isGlobalDefault": boolean;
 
     /** Creates a new CLITemplate instance. */
@@ -1230,7 +1230,7 @@ export class GeminiPreset {
     "description"?: string;
     "category": string;
     "partnerPromotionKey"?: string;
-    "envConfig"?: { [_ in string]?: string };
+    "envConfig"?: { [_: string]: string };
 
     /** Creates a new GeminiPreset instance. */
     constructor($$source: Partial<GeminiPreset> = {}) {
@@ -1292,12 +1292,12 @@ export class GeminiProvider {
     /**
      * .env 配置
      */
-    "envConfig"?: { [_ in string]?: string };
+    "envConfig"?: { [_: string]: string };
 
     /**
      * settings.json 配置
      */
-    "settingsConfig"?: { [_ in string]?: any };
+    "settingsConfig"?: { [_: string]: any };
 
     /** Creates a new GeminiProvider instance. */
     constructor($$source: Partial<GeminiProvider> = {}) {
@@ -1397,6 +1397,39 @@ export class GeminiStatus {
     }
 }
 
+export class GroupedSkills {
+    "installed": SkillGroup[];
+    "available": SkillGroup[];
+
+    /** Creates a new GroupedSkills instance. */
+    constructor($$source: Partial<GroupedSkills> = {}) {
+        if (!("installed" in $$source)) {
+            this["installed"] = [];
+        }
+        if (!("available" in $$source)) {
+            this["available"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GroupedSkills instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GroupedSkills {
+        const $$createField0_0 = $$createType12;
+        const $$createField1_0 = $$createType12;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("installed" in $$parsedSource) {
+            $$parsedSource["installed"] = $$createField0_0($$parsedSource["installed"]);
+        }
+        if ("available" in $$parsedSource) {
+            $$parsedSource["available"] = $$createField1_0($$parsedSource["available"]);
+        }
+        return new GroupedSkills($$parsedSource as Partial<GroupedSkills>);
+    }
+}
+
 /**
  * HealthCheckHistory 健康检查历史（单个 Provider 的时间线）
  */
@@ -1456,8 +1489,8 @@ export class HealthCheckHistory {
      * Creates a new HealthCheckHistory instance from a string or object.
      */
     static createFrom($$source: any = {}): HealthCheckHistory {
-        const $$createField3_0 = $$createType12;
-        const $$createField4_0 = $$createType13;
+        const $$createField3_0 = $$createType14;
+        const $$createField4_0 = $$createType15;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField3_0($$parsedSource["items"]);
@@ -1695,7 +1728,7 @@ export class LogStats {
      * Creates a new LogStats instance from a string or object.
      */
     static createFrom($$source: any = {}): LogStats {
-        const $$createField11_0 = $$createType15;
+        const $$createField11_0 = $$createType17;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("series" in $$parsedSource) {
             $$parsedSource["series"] = $$createField11_0($$parsedSource["series"]);
@@ -1780,8 +1813,8 @@ export class MCPParseResult {
      * Creates a new MCPParseResult instance from a string or object.
      */
     static createFrom($$source: any = {}): MCPParseResult {
-        const $$createField0_0 = $$createType17;
-        const $$createField1_0 = $$createType18;
+        const $$createField0_0 = $$createType19;
+        const $$createField1_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("servers" in $$parsedSource) {
             $$parsedSource["servers"] = $$createField0_0($$parsedSource["servers"]);
@@ -1798,7 +1831,7 @@ export class MCPServer {
     "type": string;
     "command"?: string;
     "args"?: string[];
-    "env"?: { [_ in string]?: string };
+    "env"?: { [_: string]: string };
     "url"?: string;
     "website"?: string;
     "tips"?: string;
@@ -1839,10 +1872,10 @@ export class MCPServer {
      * Creates a new MCPServer instance from a string or object.
      */
     static createFrom($$source: any = {}): MCPServer {
-        const $$createField3_0 = $$createType18;
+        const $$createField3_0 = $$createType20;
         const $$createField4_0 = $$createType4;
-        const $$createField8_0 = $$createType18;
-        const $$createField12_0 = $$createType18;
+        const $$createField8_0 = $$createType20;
+        const $$createField12_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField3_0($$parsedSource["args"]);
@@ -1925,7 +1958,7 @@ export class NetworkSettings {
      * Creates a new NetworkSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): NetworkSettings {
-        const $$createField4_0 = $$createType19;
+        const $$createField4_0 = $$createType21;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("targetCli" in $$parsedSource) {
             $$parsedSource["targetCli"] = $$createField4_0($$parsedSource["targetCli"]);
@@ -1998,13 +2031,13 @@ export class Provider {
      * 模型白名单 - Provider 原生支持的模型名
      * 使用 map 实现 O(1) 查找，向后兼容（omitempty）
      */
-    "supportedModels"?: { [_ in string]?: boolean };
+    "supportedModels"?: { [_: string]: boolean };
 
     /**
      * 模型映射 - 外部模型名 -> Provider 内部模型名
      * 支持精确匹配和通配符（如 "claude-*" -> "anthropic/claude-*"）
      */
-    "modelMapping"?: { [_ in string]?: string };
+    "modelMapping"?: { [_: string]: string };
 
     /**
      * 优先级分组 - 数字越小优先级越高（1-10，默认 1）
@@ -2096,9 +2129,9 @@ export class Provider {
      * Creates a new Provider instance from a string or object.
      */
     static createFrom($$source: any = {}): Provider {
-        const $$createField10_0 = $$createType20;
+        const $$createField10_0 = $$createType22;
         const $$createField11_0 = $$createType4;
-        const $$createField15_0 = $$createType22;
+        const $$createField15_0 = $$createType24;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("supportedModels" in $$parsedSource) {
             $$parsedSource["supportedModels"] = $$createField10_0($$parsedSource["supportedModels"]);
@@ -2246,9 +2279,9 @@ export class ProviderTimeline {
      * Creates a new ProviderTimeline instance from a string or object.
      */
     static createFrom($$source: any = {}): ProviderTimeline {
-        const $$createField5_0 = $$createType22;
-        const $$createField6_0 = $$createType12;
-        const $$createField7_0 = $$createType13;
+        const $$createField5_0 = $$createType24;
+        const $$createField6_0 = $$createType14;
+        const $$createField7_0 = $$createType15;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("availabilityConfig" in $$parsedSource) {
             $$parsedSource["availabilityConfig"] = $$createField5_0($$parsedSource["availabilityConfig"]);
@@ -2309,11 +2342,23 @@ export class ReqeustLog {
     "input_tokens": number;
     "output_tokens": number;
     "cache_create_tokens": number;
+
+    /**
+     * Ephemeral5mTokens/Ephemeral1hTokens 分别对应 cache_creation.ephemeral_5m/1h_input_tokens。
+     * 为 0 时按 CacheCreateTokens 全量当 5m 计费(旧数据兼容)。
+     */
+    "ephemeral_5m_tokens": number;
+    "ephemeral_1h_tokens": number;
     "cache_read_tokens": number;
     "reasoning_tokens": number;
     "is_stream": boolean;
     "duration_sec": number;
     "created_at": string;
+
+    /**
+     * ServiceTier 上游实际分配的档位(default/priority/flex 等),空=未区分。
+     */
+    "service_tier": string;
     "input_cost": number;
     "output_cost": number;
     "reasoning_cost": number;
@@ -2350,6 +2395,12 @@ export class ReqeustLog {
         if (!("cache_create_tokens" in $$source)) {
             this["cache_create_tokens"] = 0;
         }
+        if (!("ephemeral_5m_tokens" in $$source)) {
+            this["ephemeral_5m_tokens"] = 0;
+        }
+        if (!("ephemeral_1h_tokens" in $$source)) {
+            this["ephemeral_1h_tokens"] = 0;
+        }
         if (!("cache_read_tokens" in $$source)) {
             this["cache_read_tokens"] = 0;
         }
@@ -2364,6 +2415,9 @@ export class ReqeustLog {
         }
         if (!("created_at" in $$source)) {
             this["created_at"] = "";
+        }
+        if (!("service_tier" in $$source)) {
+            this["service_tier"] = "";
         }
         if (!("input_cost" in $$source)) {
             this["input_cost"] = 0;
@@ -2457,7 +2511,6 @@ export class Skill {
     "installed": boolean;
 
     /**
-     * 新增字段
      * 是否启用（从 SKILL.md 读取）
      */
     "enabled": boolean;
@@ -2468,14 +2521,14 @@ export class Skill {
     "license_file"?: string;
 
     /**
-     * "claude" | "codex"
+     * 分组 key
      */
-    "platform"?: string;
+    "source_group_key": string;
 
     /**
-     * "user" | "project"
+     * 分组标签
      */
-    "install_location"?: string;
+    "source_group_label": string;
 
     /**
      * 仓库字段
@@ -2507,6 +2560,12 @@ export class Skill {
         if (!("enabled" in $$source)) {
             this["enabled"] = false;
         }
+        if (!("source_group_key" in $$source)) {
+            this["source_group_key"] = "";
+        }
+        if (!("source_group_label" in $$source)) {
+            this["source_group_label"] = "";
+        }
 
         Object.assign(this, $$source);
     }
@@ -2517,6 +2576,107 @@ export class Skill {
     static createFrom($$source: any = {}): Skill {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Skill($$parsedSource as Partial<Skill>);
+    }
+}
+
+export class SkillGroup {
+    "group_key": string;
+    "group_label": string;
+    "skills": Skill[];
+
+    /** Creates a new SkillGroup instance. */
+    constructor($$source: Partial<SkillGroup> = {}) {
+        if (!("group_key" in $$source)) {
+            this["group_key"] = "";
+        }
+        if (!("group_label" in $$source)) {
+            this["group_label"] = "";
+        }
+        if (!("skills" in $$source)) {
+            this["skills"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillGroup instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillGroup {
+        const $$createField2_0 = $$createType26;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("skills" in $$parsedSource) {
+            $$parsedSource["skills"] = $$createField2_0($$parsedSource["skills"]);
+        }
+        return new SkillGroup($$parsedSource as Partial<SkillGroup>);
+    }
+}
+
+export class SkillLinkEntry {
+    "platform": string;
+    "status": string;
+    "target"?: string;
+    "error"?: string;
+
+    /** Creates a new SkillLinkEntry instance. */
+    constructor($$source: Partial<SkillLinkEntry> = {}) {
+        if (!("platform" in $$source)) {
+            this["platform"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillLinkEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillLinkEntry {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SkillLinkEntry($$parsedSource as Partial<SkillLinkEntry>);
+    }
+}
+
+export class SkillLinkStatus {
+    "user_skills_exists": boolean;
+    "user_skill_count": number;
+    "claude": SkillLinkEntry;
+    "codex": SkillLinkEntry;
+
+    /** Creates a new SkillLinkStatus instance. */
+    constructor($$source: Partial<SkillLinkStatus> = {}) {
+        if (!("user_skills_exists" in $$source)) {
+            this["user_skills_exists"] = false;
+        }
+        if (!("user_skill_count" in $$source)) {
+            this["user_skill_count"] = 0;
+        }
+        if (!("claude" in $$source)) {
+            this["claude"] = (new SkillLinkEntry());
+        }
+        if (!("codex" in $$source)) {
+            this["codex"] = (new SkillLinkEntry());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillLinkStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillLinkStatus {
+        const $$createField2_0 = $$createType27;
+        const $$createField3_0 = $$createType27;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("claude" in $$parsedSource) {
+            $$parsedSource["claude"] = $$createField2_0($$parsedSource["claude"]);
+        }
+        if ("codex" in $$parsedSource) {
+            $$parsedSource["codex"] = $$createField3_0($$parsedSource["codex"]);
+        }
+        return new SkillLinkStatus($$parsedSource as Partial<SkillLinkStatus>);
     }
 }
 
@@ -2721,61 +2881,12 @@ export class WSLDetection {
      * Creates a new WSLDetection instance from a string or object.
      */
     static createFrom($$source: any = {}): WSLDetection {
-        const $$createField1_0 = $$createType18;
+        const $$createField1_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("distros" in $$parsedSource) {
             $$parsedSource["distros"] = $$createField1_0($$parsedSource["distros"]);
         }
         return new WSLDetection($$parsedSource as Partial<WSLDetection>);
-    }
-}
-
-export class installRequest {
-    "directory": string;
-    "repo_owner": string;
-    "repo_name": string;
-    "repo_branch": string;
-
-    /**
-     * "claude" | "codex"
-     */
-    "platform": string;
-
-    /**
-     * "user" | "project"
-     */
-    "location": string;
-
-    /** Creates a new installRequest instance. */
-    constructor($$source: Partial<installRequest> = {}) {
-        if (!("directory" in $$source)) {
-            this["directory"] = "";
-        }
-        if (!("repo_owner" in $$source)) {
-            this["repo_owner"] = "";
-        }
-        if (!("repo_name" in $$source)) {
-            this["repo_name"] = "";
-        }
-        if (!("repo_branch" in $$source)) {
-            this["repo_branch"] = "";
-        }
-        if (!("platform" in $$source)) {
-            this["platform"] = "";
-        }
-        if (!("location" in $$source)) {
-            this["location"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new installRequest instance from a string or object.
-     */
-    static createFrom($$source: any = {}): installRequest {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new installRequest($$parsedSource as Partial<installRequest>);
     }
 }
 
@@ -2824,15 +2935,20 @@ const $$createType7 = ConfigFile.createFrom;
 const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = ProxyInjection.createFrom;
 const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = HealthCheckResult.createFrom;
+const $$createType11 = SkillGroup.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $Create.Nullable($$createType11);
-const $$createType14 = LogStatsSeries.createFrom;
-const $$createType15 = $Create.Array($$createType14);
-const $$createType16 = MCPServer.createFrom;
+const $$createType13 = HealthCheckResult.createFrom;
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = $Create.Nullable($$createType13);
+const $$createType16 = LogStatsSeries.createFrom;
 const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = $Create.Array($Create.Any);
-const $$createType19 = TargetCli.createFrom;
-const $$createType20 = $Create.Map($Create.Any, $Create.Any);
-const $$createType21 = AvailabilityConfig.createFrom;
-const $$createType22 = $Create.Nullable($$createType21);
+const $$createType18 = MCPServer.createFrom;
+const $$createType19 = $Create.Array($$createType18);
+const $$createType20 = $Create.Array($Create.Any);
+const $$createType21 = TargetCli.createFrom;
+const $$createType22 = $Create.Map($Create.Any, $Create.Any);
+const $$createType23 = AvailabilityConfig.createFrom;
+const $$createType24 = $Create.Nullable($$createType23);
+const $$createType25 = Skill.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = SkillLinkEntry.createFrom;

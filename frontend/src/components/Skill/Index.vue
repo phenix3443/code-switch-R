@@ -43,141 +43,94 @@
         </div>
       </header>
 
-      <!-- Platform Tabs -->
-      <div class="skill-platform-tabs">
-        <button
-          v-for="platform in platforms"
-          :key="platform.value"
-          :class="['skill-platform-tab', { active: activePlatform === platform.value }]"
-          @click="switchPlatform(platform.value)"
-        >
-          {{ platform.label }}
-        </button>
-      </div>
-
       <section class="skill-list-section">
         <div v-if="loading" class="skill-empty">{{ t('components.skill.list.loading') }}</div>
 
         <template v-else>
-          <!-- Project Skills Group -->
-          <div v-if="projectSkills.length > 0" class="skill-group">
+          <div v-if="installedGroups.length > 0" class="skill-group">
             <div class="skill-group-header">
               <h2 class="skill-group-title">
-                {{ t('components.skill.groups.project') }} ({{ projectSkills.length }})
+                {{ t('components.skill.groups.user') }} ({{ installedCount }})
               </h2>
-              <button
-                type="button"
-                class="ghost-icon sm"
-                :title="t('components.skill.actions.openFolder')"
-                @click="handleOpenFolderForLocation('project')"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" fill="none"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
             </div>
-            <div class="skill-list installed-skills">
-              <SkillCard
-                v-for="skill in projectSkills"
-                :key="skill.key"
-                :skill="skill"
-                :expanded="expandedSkills.has(skill.key)"
-                :toggling="togglingSkill === skill.key"
-                :uninstalling="processingSkill === uninstallProcessingKey(skill)"
-                @toggle="handleToggle"
-                @expand="toggleExpand"
-                @uninstall="handleUninstall"
-                @view="openGithub"
-              />
+            <div class="skill-group-subgroups">
+              <section v-for="group in installedGroups" :key="group.group_key" class="skill-subgroup">
+                <div class="skill-subgroup-header">
+                  <h3>{{ group.group_label }} ({{ group.skills.length }})</h3>
+                </div>
+                <div class="skill-list installed-skills">
+                  <SkillCard
+                    v-for="skill in group.skills"
+                    :key="skill.key"
+                    :skill="skill"
+                    :expanded="expandedSkills.has(skill.key)"
+                    :toggling="togglingSkill === skill.key"
+                    :uninstalling="processingSkill === uninstallProcessingKey(skill)"
+                    @toggle="handleToggle"
+                    @expand="toggleExpand"
+                    @uninstall="handleUninstall"
+                    @view="openGithub"
+                  />
+                </div>
+              </section>
             </div>
           </div>
 
-          <!-- User Skills Group -->
-          <div v-if="userSkills.length > 0" class="skill-group">
-            <div class="skill-group-header">
-              <h2 class="skill-group-title">
-                {{ t('components.skill.groups.user') }} ({{ userSkills.length }})
-              </h2>
-              <button
-                type="button"
-                class="ghost-icon sm"
-                :title="t('components.skill.actions.openFolder')"
-                @click="handleOpenFolderForLocation('user')"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" fill="none"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
-            </div>
-            <div class="skill-list installed-skills">
-              <SkillCard
-                v-for="skill in userSkills"
-                :key="skill.key"
-                :skill="skill"
-                :expanded="expandedSkills.has(skill.key)"
-                :toggling="togglingSkill === skill.key"
-                :uninstalling="processingSkill === uninstallProcessingKey(skill)"
-                @toggle="handleToggle"
-                @expand="toggleExpand"
-                @uninstall="handleUninstall"
-                @view="openGithub"
-              />
-            </div>
-          </div>
-
-          <!-- No Installed Skills Message -->
-          <div v-if="projectSkills.length === 0 && userSkills.length === 0 && installedSkills.length === 0" class="skill-empty-installed">
+          <div v-if="installedGroups.length === 0" class="skill-empty-installed">
             {{ t('components.skill.list.noInstalled') }}
           </div>
 
-          <!-- Available Skills Group -->
-          <div v-if="availableSkills.length > 0" class="skill-group">
+          <div v-if="availableGroups.length > 0" class="skill-group">
             <div class="skill-group-header">
               <h2 class="skill-group-title">
-                {{ t('components.skill.groups.available') }} ({{ availableSkills.length }})
+                {{ t('components.skill.groups.available') }} ({{ availableCount }})
               </h2>
             </div>
-            <div class="skill-list">
-              <article v-for="skill in availableSkills" :key="skill.key || skill.directory" class="skill-card available-card">
-                <div class="skill-card-head">
-                  <div>
-                    <p class="skill-card-eyebrow">{{ skill.directory }}</p>
-                    <h3>{{ skill.name }}</h3>
-                  </div>
-                  <div class="skill-card-actions">
-                    <button type="button" class="ghost-icon sm" :title="t('components.skill.actions.view')"
-                      :data-tooltip="t('components.skill.actions.view')" @click="openGithub(skill.readme_url)">
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 5h7v7M19 5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6"
-                          stroke-linecap="round" stroke-linejoin="round" />
-                        <path d="M11 6H7a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-4" fill="none" stroke="currentColor"
-                          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </button>
-                    <button type="button" class="ghost-icon sm"
-                      :title="canInstallSkill(skill) ? t('components.skill.actions.install') : t('components.skill.list.missingRepo')"
-                      :data-tooltip="canInstallSkill(skill) ? t('components.skill.actions.install') : t('components.skill.list.missingRepo')"
-                      :disabled="isInstallingSkill(skill) || !canInstallSkill(skill)"
-                      @click="openInstallModal(skill)">
-                      <svg v-if="!isInstallingSkill(skill)" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                          stroke-linejoin="round" fill="none" />
-                      </svg>
-                      <span v-else class="skill-action-spinner" aria-hidden="true"></span>
-                    </button>
-                  </div>
+            <div class="skill-group-subgroups">
+              <section v-for="group in availableGroups" :key="group.group_key" class="skill-subgroup">
+                <div class="skill-subgroup-header">
+                  <h3>{{ group.group_label }} ({{ group.skills.length }})</h3>
                 </div>
-                <p class="skill-card-desc">
-                  {{ skill.description || t('components.skill.list.noDescription') }}
-                </p>
-              </article>
+                <div class="skill-list">
+                  <article v-for="skill in group.skills" :key="skill.key || skill.directory" class="skill-card available-card">
+                    <div class="skill-card-head">
+                      <div>
+                        <p class="skill-card-eyebrow">{{ skill.directory }}</p>
+                        <h3>{{ skill.name }}</h3>
+                      </div>
+                      <div class="skill-card-actions">
+                        <button type="button" class="ghost-icon sm" :title="t('components.skill.actions.view')"
+                          :data-tooltip="t('components.skill.actions.view')" @click="openGithub(skill.readme_url)">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5h7v7M19 5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M11 6H7a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-4" fill="none" stroke="currentColor"
+                              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                        <button type="button" class="ghost-icon sm"
+                          :title="canInstallSkill(skill) ? t('components.skill.actions.install') : t('components.skill.list.missingRepo')"
+                          :data-tooltip="canInstallSkill(skill) ? t('components.skill.actions.install') : t('components.skill.list.missingRepo')"
+                          :disabled="isInstallingSkill(skill) || !canInstallSkill(skill)"
+                          @click="openInstallModal(skill)">
+                          <svg v-if="!isInstallingSkill(skill)" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                              stroke-linejoin="round" fill="none" />
+                          </svg>
+                          <span v-else class="skill-action-spinner" aria-hidden="true"></span>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="skill-card-desc">
+                      {{ skill.description || t('components.skill.list.noDescription') }}
+                    </p>
+                  </article>
+                </div>
+              </section>
             </div>
           </div>
 
-          <!-- Empty State -->
-          <div v-if="skills.length === 0" class="skill-empty">
+          <div v-if="installedCount === 0 && availableCount === 0" class="skill-empty">
             {{ t('components.skill.list.empty') }}
           </div>
         </template>
@@ -186,44 +139,11 @@
       </section>
     </div>
 
-    <!-- Install Location Modal -->
     <BaseModal :open="installModalOpen" :title="t('components.skill.install.title')" @close="closeInstallModal">
       <div class="install-modal-content">
         <p class="install-modal-desc">
           {{ t('components.skill.install.desc', { name: installTarget?.name }) }}
         </p>
-
-        <div class="install-location-options">
-          <label class="install-option" :class="{ selected: installLocation === 'user' }">
-            <input type="radio" v-model="installLocation" value="user" class="sr-only" />
-            <div class="install-option-content">
-              <svg viewBox="0 0 24 24" class="install-option-icon" aria-hidden="true">
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" fill="none"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <div>
-                <p class="install-option-title">{{ t('components.skill.install.userLevel') }}</p>
-                <p class="install-option-desc">~/.{{ activePlatform }}/skills/</p>
-              </div>
-            </div>
-          </label>
-
-          <label class="install-option" :class="{ selected: installLocation === 'project' }">
-            <input type="radio" v-model="installLocation" value="project" class="sr-only" />
-            <div class="install-option-content">
-              <svg viewBox="0 0 24 24" class="install-option-icon" aria-hidden="true">
-                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" fill="none"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <div>
-                <p class="install-option-title">{{ t('components.skill.install.projectLevel') }}</p>
-                <p class="install-option-desc">./.{{ activePlatform }}/skills/</p>
-                <p class="install-option-warning">{{ t('components.skill.install.gitWarning') }}</p>
-              </div>
-            </div>
-          </label>
-        </div>
-
         <div class="install-modal-actions">
           <button class="btn-secondary" @click="closeInstallModal">
             {{ t('common.cancel') }}
@@ -235,7 +155,6 @@
       </div>
     </BaseModal>
 
-    <!-- Repository Modal -->
     <BaseModal :open="repoModalOpen" :title="t('components.skill.repos.title')" @close="closeRepoModal">
       <div class="skill-repo-section repo-modal-content">
         <p class="skill-repo-subtitle">{{ t('components.skill.repos.subtitle') }}</p>
@@ -301,16 +220,16 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { Browser } from '@wailsio/runtime'
 import {
-  fetchSkills,
-  fetchSkillsForPlatform,
+  fetchGroupedSkills,
   installSkill,
-  uninstallSkillEx,
+  uninstallSkill,
   toggleSkill,
-  getSkillContent,
-  openSkillFolder,
+  openUserSkillsFolder,
   fetchSkillRepos,
   addSkillRepo,
   removeSkillRepo,
+  type GroupedSkills,
+  type SkillGroup,
   type SkillSummary,
   type SkillRepoConfig
 } from '../../services/skill'
@@ -320,15 +239,7 @@ import SkillCard from './SkillCard.vue'
 const router = useRouter()
 const { t } = useI18n()
 
-// Platform definitions (use computed for i18n reactivity)
-const platforms = computed(() => [
-  { value: 'claude' as const, label: t('components.skill.platform.claude') },
-  { value: 'codex' as const, label: t('components.skill.platform.codex') }
-])
-
-// State
-const activePlatform = ref<'claude' | 'codex'>('claude')
-const skills = ref<SkillSummary[]>([])
+const groupedSkills = ref<GroupedSkills>({ installed: [], available: [] })
 const repoList = ref<SkillRepoConfig[]>([])
 const loading = ref(false)
 const repoLoading = ref(false)
@@ -339,36 +250,17 @@ const togglingSkill = ref('')
 const repoBusy = ref(false)
 const repoForm = reactive({ url: '', branch: 'main' })
 const repoModalOpen = ref(false)
-
-// Install modal state
 const installModalOpen = ref(false)
 const installTarget = ref<SkillSummary | null>(null)
-const installLocation = ref<'user' | 'project'>('user')
 const installing = ref(false)
-
-// Expanded skills
 const expandedSkills = ref<Set<string>>(new Set())
 
 const refreshing = computed(() => loading.value || repoLoading.value)
+const installedGroups = computed<SkillGroup[]>(() => groupedSkills.value.installed ?? [])
+const availableGroups = computed<SkillGroup[]>(() => groupedSkills.value.available ?? [])
+const installedCount = computed(() => installedGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
+const availableCount = computed(() => availableGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
 
-// Computed: Split skills by location
-const installedSkills = computed(() =>
-  skills.value.filter(s => s.installed)
-)
-
-const projectSkills = computed(() =>
-  skills.value.filter(s => s.install_location === 'project' && s.installed)
-)
-
-const userSkills = computed(() =>
-  skills.value.filter(s => s.install_location === 'user' && s.installed)
-)
-
-const availableSkills = computed(() =>
-  skills.value.filter(s => !s.installed)
-)
-
-// Skill identity helpers
 const skillIdentity = (skill: SkillSummary) =>
   skill.key || `${(skill.repo_owner ?? 'local').toLowerCase()}:${skill.directory.toLowerCase()}`
 
@@ -378,40 +270,13 @@ const uninstallProcessingKey = (skill: SkillSummary) => `uninstall:${skillIdenti
 const isInstallingSkill = (skill: SkillSummary) => processingSkill.value === installProcessingKey(skill)
 const canInstallSkill = (skill: SkillSummary) => Boolean(skill.repo_owner && skill.repo_name)
 
-// Platform switching
-const switchPlatform = async (platform: 'claude' | 'codex') => {
-  activePlatform.value = platform
-  await loadSkillsForPlatform()
-}
-
-// Load skills for current platform
-const loadSkillsForPlatform = async () => {
+const loadGroupedSkills = async () => {
   loading.value = true
   skillsError.value = ''
   try {
-    // Load installed skills for this platform (has correct install_location)
-    const installed = await fetchSkillsForPlatform(activePlatform.value)
-    // Also load available skills from repos
-    const available = await fetchSkills()
-
-    // FIX: Only keep repo skills that can be installed (have repo info)
-    // Force installed=false to avoid "gap" where skills fall into neither group
-    const availableClean = available
-      .filter(s => s.repo_owner && s.repo_name)  // Only installable repo skills
-      .map(s => ({
-        ...s,
-        installed: false,  // Force to false - actual status from fetchSkillsForPlatform
-        install_location: '' as const,
-        platform: '' as const
-      }))
-
-    // Merge: installed skills take precedence by directory name
-    const installedDirs = new Set(installed.map(s => s.directory.toLowerCase()))
-    const filtered = availableClean.filter(s => !installedDirs.has(s.directory.toLowerCase()))
-
-    skills.value = [...installed, ...filtered]
+    groupedSkills.value = await fetchGroupedSkills()
   } catch (error) {
-    console.error('failed to load skills', error)
+    console.error('failed to load grouped skills', error)
     skillsError.value = t('components.skill.list.error')
   } finally {
     loading.value = false
@@ -433,24 +298,14 @@ const loadRepos = async () => {
 }
 
 const refresh = () => {
-  void Promise.all([loadRepos(), loadSkillsForPlatform()])
+  void Promise.all([loadRepos(), loadGroupedSkills()])
 }
 
-// Toggle skill enabled status
 const handleToggle = async (skill: SkillSummary, enabled: boolean) => {
   togglingSkill.value = skill.key
   try {
-    await toggleSkill(
-      skill.directory,
-      skill.platform || activePlatform.value,
-      skill.install_location || 'user',
-      enabled
-    )
-    // Update local state
-    const target = skills.value.find(s => s.key === skill.key)
-    if (target) {
-      target.enabled = enabled
-    }
+    await toggleSkill(skill.directory, enabled)
+    await loadGroupedSkills()
   } catch (error) {
     console.error('failed to toggle skill', error)
     skillsError.value = t('components.skill.actions.toggleError')
@@ -459,7 +314,6 @@ const handleToggle = async (skill: SkillSummary, enabled: boolean) => {
   }
 }
 
-// Toggle content expansion
 const toggleExpand = async (skill: SkillSummary) => {
   const key = skill.key
   if (expandedSkills.value.has(key)) {
@@ -469,28 +323,16 @@ const toggleExpand = async (skill: SkillSummary) => {
   }
 }
 
-// Open skill folder (default: user location)
 const handleOpenFolder = async () => {
   try {
-    await openSkillFolder(activePlatform.value, 'user')
+    await openUserSkillsFolder()
   } catch (error) {
-    console.error('failed to open folder', error)
+    console.error('failed to open user skills folder', error)
   }
 }
 
-// Open skill folder for specific location
-const handleOpenFolderForLocation = async (location: 'user' | 'project') => {
-  try {
-    await openSkillFolder(activePlatform.value, location)
-  } catch (error) {
-    console.error('failed to open folder', error)
-  }
-}
-
-// Install modal
 const openInstallModal = (skill: SkillSummary) => {
   installTarget.value = skill
-  installLocation.value = 'user'
   installModalOpen.value = true
 }
 
@@ -506,17 +348,15 @@ const confirmInstall = async () => {
   processingSkill.value = installProcessingKey(installTarget.value)
 
   try {
-    await installSkill({
-      directory: installTarget.value.directory,
-      repo_owner: installTarget.value.repo_owner,
-      repo_name: installTarget.value.repo_name,
-      repo_branch: installTarget.value.repo_branch,
-      platform: activePlatform.value,
-      location: installLocation.value
-    })
+    await installSkill(
+      installTarget.value.directory,
+      installTarget.value.repo_owner ?? '',
+      installTarget.value.repo_name ?? '',
+      installTarget.value.repo_branch ?? ''
+    )
     skillsError.value = ''
     closeInstallModal()
-    await loadSkillsForPlatform()
+    await loadGroupedSkills()
   } catch (error) {
     console.error('failed to install skill', error)
     skillsError.value = t('components.skill.actions.installError', { name: installTarget.value.name })
@@ -526,17 +366,12 @@ const confirmInstall = async () => {
   }
 }
 
-// Uninstall
 const handleUninstall = async (skill: SkillSummary) => {
   processingSkill.value = uninstallProcessingKey(skill)
   try {
-    await uninstallSkillEx(
-      skill.directory,
-      skill.platform || activePlatform.value,
-      skill.install_location || 'user'
-    )
+    await uninstallSkill(skill.directory)
     skillsError.value = ''
-    await loadSkillsForPlatform()
+    await loadGroupedSkills()
   } catch (error) {
     console.error('failed to uninstall skill', error)
     skillsError.value = t('components.skill.actions.uninstallError', { name: skill.name })
@@ -545,7 +380,6 @@ const handleUninstall = async (skill: SkillSummary) => {
   }
 }
 
-// Navigation
 const goHome = () => {
   router.push('/')
 }
@@ -562,7 +396,6 @@ const openGithub = (url: string) => {
   openExternal(url)
 }
 
-// Repository modal
 const openRepoModal = () => {
   repoModalOpen.value = true
   if (!repoList.value.length && !repoLoading.value) {
@@ -606,7 +439,7 @@ const submitRepo = async () => {
     })
     repoForm.url = ''
     repoForm.branch = 'main'
-    await loadSkillsForPlatform()
+    await loadGroupedSkills()
   } catch (error) {
     console.error('failed to add skill repo', error)
     repoError.value = t('components.skill.repos.addError')
@@ -620,7 +453,7 @@ const removeRepo = async (repo: SkillRepoConfig) => {
   repoError.value = ''
   try {
     repoList.value = await removeSkillRepo(repo.owner, repo.name)
-    await loadSkillsForPlatform()
+    await loadGroupedSkills()
   } catch (error) {
     console.error('failed to remove skill repo', error)
     repoError.value = t('components.skill.repos.removeError')
@@ -635,7 +468,7 @@ const openRepoGithub = (repo: SkillRepoConfig) => {
 }
 
 onMounted(() => {
-  void Promise.all([loadRepos(), loadSkillsForPlatform()])
+  void Promise.all([loadRepos(), loadGroupedSkills()])
 })
 </script>
 

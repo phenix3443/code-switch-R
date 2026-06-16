@@ -44,16 +44,26 @@ type Skill struct {
 	ReadmeURL   string `json:"readme_url"`
 	Installed   bool   `json:"installed"`
 
-	// 新增字段
-	Enabled         bool   `json:"enabled"`                    // 是否启用（从 SKILL.md 读取）
-	LicenseFile     string `json:"license_file,omitempty"`     // 许可证文件路径
-	Platform        string `json:"platform,omitempty"`         // "claude" | "codex"
-	InstallLocation string `json:"install_location,omitempty"` // "user" | "project"
+	Enabled          bool   `json:"enabled"`                 // 是否启用（从 SKILL.md 读取）
+	LicenseFile      string `json:"license_file,omitempty"`  // 许可证文件路径
+	SourceGroupKey   string `json:"source_group_key"`        // 分组 key
+	SourceGroupLabel string `json:"source_group_label"`      // 分组标签
 
 	// 仓库字段
 	RepoOwner  string `json:"repo_owner,omitempty"`
 	RepoName   string `json:"repo_name,omitempty"`
 	RepoBranch string `json:"repo_branch,omitempty"`
+}
+
+type SkillGroup struct {
+	GroupKey   string  `json:"group_key"`
+	GroupLabel string  `json:"group_label"`
+	Skills     []Skill `json:"skills"`
+}
+
+type GroupedSkills struct {
+	Installed []SkillGroup `json:"installed"`
+	Available []SkillGroup `json:"available"`
 }
 
 type skillMetadata struct {
@@ -111,20 +121,12 @@ type skillRepoConfig struct {
 	Enabled bool   `json:"enabled"`
 }
 
-type installRequest struct {
-	Directory string `json:"directory"`
-	RepoOwner string `json:"repo_owner"`
-	RepoName  string `json:"repo_name"`
-	Branch    string `json:"repo_branch"`
-	Platform  string `json:"platform"` // "claude" | "codex"
-	Location  string `json:"location"` // "user" | "project"
-}
-
 type SkillService struct {
-	httpClient *http.Client
-	storePath  string
-	installDir string
-	mu         sync.Mutex
+	httpClient     *http.Client
+	storePath      string
+	installDir     string
+	repoSnapshotter func(skillRepoConfig) (string, string, func(), error)
+	mu             sync.Mutex
 }
 
 func NewSkillService() *SkillService {
@@ -133,9 +135,10 @@ func NewSkillService() *SkillService {
 		home = "."
 	}
 	return &SkillService{
-		httpClient: &http.Client{Timeout: 60 * time.Second},
-		storePath:  filepath.Join(home, skillStoreDir, skillStoreFile),
-		installDir: getUserSkillsPath(),
+		httpClient:      &http.Client{Timeout: 60 * time.Second},
+		storePath:       filepath.Join(home, skillStoreDir, skillStoreFile),
+		installDir:      getUserSkillsPath(),
+		repoSnapshotter: nil,
 	}
 }
 
@@ -207,8 +210,18 @@ func parseSkillMetadataExtended(content string) (skillMetadataExtended, error) {
 	return meta, nil
 }
 
-// ListSkills aggregates skills from configured repositories and the local install directory.
-func (ss *SkillService) ListSkills() ([]Skill, error) {
+// ListInstalledSkills 返回统一目录中的已安装 skills。
+func (ss *SkillService) ListInstalledSkills() ([]Skill, error) {
+	store, err := ss.loadStore()
+	if err != nil {
+		return nil, err
+	}
+
+	return ss.scanInstalledSkills(store), nil
+}
+
+// ListAvailableSkills 返回远程 catalog 中可安装 skills。
+func (ss *SkillService) ListAvailableSkills() ([]Skill, error) {
 	store, err := ss.loadStore()
 	if err != nil {
 		return nil, err
@@ -247,42 +260,93 @@ func (ss *SkillService) ListSkills() ([]Skill, error) {
 			if name == "" {
 				name = entry.Name()
 			}
-			key := buildSkillKey(repo.Owner, repo.Name, entry.Name())
+			groupKey, groupLabel := buildSourceGroup("github", repo.Owner, repo.Name)
 			skillMap[dirKey] = Skill{
-				Key:         key,
-				Name:        name,
-				Description: strings.TrimSpace(meta.Description),
-				Directory:   entry.Name(),
-				ReadmeURL:   buildRepoURL(repo, branch, entry.Name()),
-				Installed:   ss.isInstalled(entry.Name()),
-				RepoOwner:   repo.Owner,
-				RepoName:    repo.Name,
-				RepoBranch:  branch,
+				Key:              buildSkillKey(repo.Owner, repo.Name, entry.Name()),
+				Name:             name,
+				Description:      strings.TrimSpace(meta.Description),
+				Directory:        entry.Name(),
+				ReadmeURL:        buildRepoURL(repo, branch, entry.Name()),
+				Installed:        false,
+				RepoOwner:        repo.Owner,
+				RepoName:         repo.Name,
+				RepoBranch:       branch,
+				SourceGroupKey:   groupKey,
+				SourceGroupLabel: groupLabel,
 			}
 		}
 		cleanup()
 	}
 
-	ss.mergeLocalSkills(skillMap)
 	skills := make([]Skill, 0, len(skillMap))
 	for _, skill := range skillMap {
 		skills = append(skills, skill)
 	}
-	sort.SliceStable(skills, func(i, j int) bool {
-		li := strings.ToLower(skills[i].Name)
-		lj := strings.ToLower(skills[j].Name)
-		if li == lj {
-			return strings.ToLower(skills[i].Directory) < strings.ToLower(skills[j].Directory)
+	sortSkills(skills)
+	return skills, nil
+}
+
+// ListGroupedSkills 返回按来源仓库分组的 installed/available 数据。
+func (ss *SkillService) ListGroupedSkills() (GroupedSkills, error) {
+	installed, err := ss.ListInstalledSkills()
+	if err != nil {
+		return GroupedSkills{}, err
+	}
+	available, err := ss.ListAvailableSkills()
+	if err != nil {
+		return GroupedSkills{}, err
+	}
+
+	installedDirs := make(map[string]struct{}, len(installed))
+	for _, skill := range installed {
+		installedDirs[normalizeDirectoryKey(skill.Directory)] = struct{}{}
+	}
+
+	filteredAvailable := make([]Skill, 0, len(available))
+	for _, skill := range available {
+		if _, exists := installedDirs[normalizeDirectoryKey(skill.Directory)]; exists {
+			continue
 		}
-		return li < lj
-	})
+		filteredAvailable = append(filteredAvailable, skill)
+	}
+
+	return GroupedSkills{
+		Installed: groupSkills(installed),
+		Available: groupSkills(filteredAvailable),
+	}, nil
+}
+
+// ListSkills 保持兼容，返回 installed + available 平铺结果。
+func (ss *SkillService) ListSkills() ([]Skill, error) {
+	installed, err := ss.ListInstalledSkills()
+	if err != nil {
+		return nil, err
+	}
+	available, err := ss.ListAvailableSkills()
+	if err != nil {
+		return nil, err
+	}
+
+	skillMap := make(map[string]Skill, len(installed)+len(available))
+	for _, skill := range available {
+		skillMap[normalizeDirectoryKey(skill.Directory)] = skill
+	}
+	for _, skill := range installed {
+		skillMap[normalizeDirectoryKey(skill.Directory)] = skill
+	}
+
+	skills := make([]Skill, 0, len(skillMap))
+	for _, skill := range skillMap {
+		skills = append(skills, skill)
+	}
+	sortSkills(skills)
 	return skills, nil
 }
 
 // InstallSkill installs a skill directory from the configured repositories.
-func (ss *SkillService) InstallSkill(req installRequest) error {
-	req.Directory = strings.TrimSpace(req.Directory)
-	if req.Directory == "" {
+func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch string) error {
+	directory = strings.TrimSpace(directory)
+	if directory == "" {
 		return errors.New("skill directory 不能为空")
 	}
 	if err := ss.EnsureSkillLinks(); err != nil {
@@ -293,7 +357,7 @@ func (ss *SkillService) InstallSkill(req installRequest) error {
 	if err != nil {
 		return err
 	}
-	repos := ss.resolveReposForInstall(req, store.Repos)
+	repos := ss.resolveReposForInstall(repoOwner, repoName, store.Repos)
 	if len(repos) == 0 {
 		return errors.New("未找到可用的技能仓库")
 	}
@@ -305,11 +369,11 @@ func (ss *SkillService) InstallSkill(req installRequest) error {
 			lastErr = err
 			continue
 		}
-		skillPath := filepath.Join(repoDir, req.Directory)
+		skillPath := filepath.Join(repoDir, directory)
 		info, err := os.Stat(skillPath)
 		if err != nil || !info.IsDir() {
 			cleanup()
-			lastErr = fmt.Errorf("仓库 %s/%s 中未找到 %s", repo.Owner, repo.Name, req.Directory)
+			lastErr = fmt.Errorf("仓库 %s/%s 中未找到 %s", repo.Owner, repo.Name, directory)
 			continue
 		}
 		provenance := skillProvenance{
@@ -318,7 +382,10 @@ func (ss *SkillService) InstallSkill(req installRequest) error {
 			RepoName:   repo.Name,
 			RepoBranch: repo.Branch,
 		}
-		if err := ss.installFromPathWithProvenance(req.Directory, skillPath, provenance); err != nil {
+		if repoBranch != "" {
+			provenance.RepoBranch = repoBranch
+		}
+		if err := ss.installFromPathWithProvenance(directory, skillPath, provenance); err != nil {
 			cleanup()
 			lastErr = err
 			continue
@@ -327,7 +394,7 @@ func (ss *SkillService) InstallSkill(req installRequest) error {
 		return nil
 	}
 	if lastErr == nil {
-		lastErr = fmt.Errorf("skill %s 未找到", req.Directory)
+		lastErr = fmt.Errorf("skill %s 未找到", directory)
 	}
 	return lastErr
 }
@@ -855,6 +922,9 @@ func (ss *SkillService) saveStoreLocked(store skillStore) error {
 }
 
 func (ss *SkillService) prepareRepoSnapshot(repo skillRepoConfig) (string, string, func(), error) {
+	if ss.repoSnapshotter != nil {
+		return ss.repoSnapshotter(repo)
+	}
 	tmpDir, err := os.MkdirTemp("", "skill-repo-")
 	if err != nil {
 		return "", "", nil, err
@@ -976,42 +1046,61 @@ func unzipArchive(zipPath, dest string) (string, error) {
 	return filepath.Join(dest, root), nil
 }
 
-func (ss *SkillService) mergeLocalSkills(skills map[string]Skill) {
+func (ss *SkillService) scanInstalledSkills(store skillStore) []Skill {
 	entries, err := os.ReadDir(ss.installDir)
 	if err != nil {
-		return
+		return []Skill{}
 	}
+
+	skills := make([]Skill, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 		dir := entry.Name()
-		dirKey := normalizeDirectoryKey(dir)
-		if existing, ok := skills[dirKey]; ok {
-			existing.Installed = true
-			skills[dirKey] = existing
+		skillPath := filepath.Join(ss.installDir, dir)
+		meta, enabled, err := ss.readSkillMetadataExtended(skillPath)
+		if err != nil {
 			continue
 		}
-		meta, err := readSkillMetadata(filepath.Join(ss.installDir, dir))
+
 		name := strings.TrimSpace(meta.Name)
-		desc := strings.TrimSpace(meta.Description)
-		if err != nil || name == "" {
+		if name == "" {
 			name = dir
 		}
-		skills[dirKey] = Skill{
-			Key:         buildSkillKey("", "", dir),
-			Name:        name,
-			Description: desc,
-			Directory:   dir,
-			ReadmeURL:   "",
-			Installed:   true,
+		licenseFile := ""
+		for _, lf := range []string{"LICENSE", "LICENSE.txt", "LICENSE.md"} {
+			if _, err := os.Stat(filepath.Join(skillPath, lf)); err == nil {
+				licenseFile = lf
+				break
+			}
 		}
+
+		provenance := normalizeSkillProvenance(store.Provenance[dir])
+		groupKey, groupLabel := buildSourceGroup(provenance.Type, provenance.RepoOwner, provenance.RepoName)
+		skills = append(skills, Skill{
+			Key:              buildSkillKey(provenance.RepoOwner, provenance.RepoName, dir),
+			Name:             name,
+			Description:      strings.TrimSpace(meta.Description),
+			Directory:        dir,
+			Installed:        true,
+			Enabled:          enabled,
+			LicenseFile:      licenseFile,
+			RepoOwner:        provenance.RepoOwner,
+			RepoName:         provenance.RepoName,
+			RepoBranch:       provenance.RepoBranch,
+			SourceGroupKey:   groupKey,
+			SourceGroupLabel: groupLabel,
+		})
 	}
+
+	sortSkills(skills)
+	return skills
 }
 
-func (ss *SkillService) resolveReposForInstall(req installRequest, repos []skillRepoConfig) []skillRepoConfig {
-	owner := strings.TrimSpace(req.RepoOwner)
-	name := strings.TrimSpace(req.RepoName)
+func (ss *SkillService) resolveReposForInstall(owner, name string, repos []skillRepoConfig) []skillRepoConfig {
+	owner = strings.TrimSpace(owner)
+	name = strings.TrimSpace(name)
 	var target []skillRepoConfig
 	if owner != "" && name != "" {
 		for _, repo := range repos {
@@ -1030,6 +1119,41 @@ func (ss *SkillService) resolveReposForInstall(req installRequest, repos []skill
 		}
 	}
 	return target
+}
+
+func groupSkills(skills []Skill) []SkillGroup {
+	groups := make([]SkillGroup, 0)
+	indexByKey := make(map[string]int)
+
+	for _, skill := range skills {
+		groupKey := skill.SourceGroupKey
+		groupLabel := skill.SourceGroupLabel
+		if groupKey == "" || groupLabel == "" {
+			groupKey, groupLabel = buildSourceGroup("", "", "")
+			skill.SourceGroupKey = groupKey
+			skill.SourceGroupLabel = groupLabel
+		}
+
+		idx, exists := indexByKey[groupKey]
+		if !exists {
+			indexByKey[groupKey] = len(groups)
+			groups = append(groups, SkillGroup{
+				GroupKey:   groupKey,
+				GroupLabel: groupLabel,
+				Skills:     []Skill{skill},
+			})
+			continue
+		}
+		groups[idx].Skills = append(groups[idx].Skills, skill)
+	}
+
+	sort.SliceStable(groups, func(i, j int) bool {
+		return strings.ToLower(groups[i].GroupLabel) < strings.ToLower(groups[j].GroupLabel)
+	})
+	for i := range groups {
+		sortSkills(groups[i].Skills)
+	}
+	return groups
 }
 
 func buildRepoURL(repo skillRepoConfig, branch, directory string) string {
@@ -1052,6 +1176,27 @@ func buildSkillKey(owner, name, directory string) string {
 
 func normalizeDirectoryKey(directory string) string {
 	return strings.ToLower(strings.TrimSpace(directory))
+}
+
+func buildSourceGroup(provenanceType, repoOwner, repoName string) (string, string) {
+	if strings.EqualFold(strings.TrimSpace(provenanceType), "github") &&
+		strings.TrimSpace(repoOwner) != "" &&
+		strings.TrimSpace(repoName) != "" {
+		group := fmt.Sprintf("%s/%s", strings.TrimSpace(repoOwner), strings.TrimSpace(repoName))
+		return group, group
+	}
+	return "local", "Local / Unknown Source"
+}
+
+func sortSkills(skills []Skill) {
+	sort.SliceStable(skills, func(i, j int) bool {
+		li := strings.ToLower(skills[i].Name)
+		lj := strings.ToLower(skills[j].Name)
+		if li == lj {
+			return strings.ToLower(skills[i].Directory) < strings.ToLower(skills[j].Directory)
+		}
+		return li < lj
+	})
 }
 
 func (ss *SkillService) isInstalled(directory string) bool {

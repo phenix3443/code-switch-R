@@ -25,9 +25,6 @@
           <span v-if="skill.license_file" class="skill-badge license">
             {{ t('components.skill.license.complete', { file: skill.license_file }) }}
           </span>
-          <span v-if="skill.install_location === 'project'" class="skill-badge project">
-            {{ t('components.skill.groups.project') }}
-          </span>
         </div>
       </div>
 
@@ -118,11 +115,7 @@ watch(() => props.expanded, async (isExpanded) => {
   if (isExpanded && !content.value) {
     loadingContent.value = true
     try {
-      content.value = await getSkillContent(
-        props.skill.directory,
-        props.skill.platform || 'claude',
-        props.skill.install_location || 'user'
-      )
+      content.value = await getSkillContent(props.skill.directory)
     } catch (error) {
       console.error('failed to load skill content', error)
       content.value = t('components.skill.actions.loadFailed')
@@ -242,12 +235,6 @@ watch(() => props.expanded, async (isExpanded) => {
   background: rgba(245, 158, 11, 0.15); /* fallback for old WebKit */
   background: color-mix(in srgb, #f59e0b 15%, transparent);
   color: #f59e0b;
-}
-
-.skill-badge.project {
-  background: rgba(59, 130, 246, 0.15); /* fallback for old WebKit */
-  background: color-mix(in srgb, #3b82f6 15%, transparent);
-  color: #3b82f6;
 }
 
 .skill-card-actions {
