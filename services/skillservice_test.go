@@ -121,6 +121,191 @@ func TestSkillPathHelpers(t *testing.T) {
 	}
 }
 
+func TestInstallSkillUsesUnifiedUserSkillsDirectory(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	source := filepath.Join(home, "source-skill")
+	createSkillFixture(t, source, "demo-skill", "Demo Skill", "demo desc", "")
+
+	if err := ss.installFromPath("demo-skill", source); err != nil {
+		t.Fatalf("installFromPath() 失败: %v", err)
+	}
+
+	assertSkillDirExists(t, filepath.Join(getUserSkillsPath(), "demo-skill"))
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	provenance := store.Provenance["demo-skill"]
+	if provenance.Type != "local" {
+		t.Fatalf("期望本地安装写入 local provenance，得到 %#v", provenance)
+	}
+
+	status := ss.GetSkillLinkStatus()
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+}
+
+func TestInstallSkillBlocksConflictingDirectoryOwnership(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	source := filepath.Join(home, "source-skill")
+	createSkillFixture(t, source, "shared-skill", "Shared Skill", "demo desc", "")
+
+	store := newDefaultSkillStore()
+	store.Provenance["shared-skill"] = skillProvenance{
+		Type:       "github",
+		RepoOwner:  "other",
+		RepoName:   "repo",
+		RepoBranch: "main",
+	}
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	err := ss.installFromPath("shared-skill", source)
+	if err == nil {
+		t.Fatalf("期望目录来源冲突时安装失败")
+	}
+	if !strings.Contains(err.Error(), "目录名已被其他来源占用") {
+		t.Fatalf("期望返回来源冲突错误，得到: %v", err)
+	}
+}
+
+func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	skillDir := filepath.Join(getUserSkillsPath(), "demo-skill")
+	createSkillFixture(t, skillDir, "demo-skill", "Demo Skill", "demo desc", "")
+
+	store := newDefaultSkillStore()
+	store.Provenance["demo-skill"] = skillProvenance{
+		Type:       "github",
+		RepoOwner:  "owner",
+		RepoName:   "repo",
+		RepoBranch: "main",
+	}
+	store.EnabledOverrides["demo-skill"] = false
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	if err := ss.UninstallSkill("demo-skill"); err != nil {
+		t.Fatalf("UninstallSkill() 失败: %v", err)
+	}
+
+	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
+		t.Fatalf("期望 skill 目录被删除，得到 err=%v", err)
+	}
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	if _, ok := store.Provenance["demo-skill"]; ok {
+		t.Fatalf("期望卸载后清理 provenance")
+	}
+	if _, ok := store.EnabledOverrides["demo-skill"]; ok {
+		t.Fatalf("期望卸载后清理 enabled_overrides")
+	}
+}
+
+func TestToggleSkillPersistsOverrideAndRewritesSkillMD(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	skillDir := filepath.Join(getUserSkillsPath(), "demo-skill")
+	createSkillFixture(t, skillDir, "demo-skill", "Demo Skill", "demo desc", "disable-model-invocation: false\n")
+
+	if err := ss.ToggleSkill("demo-skill", false); err != nil {
+		t.Fatalf("ToggleSkill() 失败: %v", err)
+	}
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	override, ok := store.EnabledOverrides["demo-skill"]
+	if !ok || override {
+		t.Fatalf("期望持久化 enabled override=false，得到 %#v", store.EnabledOverrides)
+	}
+
+	content, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("读取 SKILL.md 失败: %v", err)
+	}
+	if !strings.Contains(string(content), "disable-model-invocation: true") {
+		t.Fatalf("期望 SKILL.md 被改写为禁用状态，得到:\n%s", string(content))
+	}
+}
+
+func TestGetAndSaveSkillContentUseUnifiedUserSkillsDirectory(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	skillDir := filepath.Join(getUserSkillsPath(), "demo-skill")
+	createSkillFixture(t, skillDir, "demo-skill", "Demo Skill", "demo desc", "")
+
+	content, err := ss.GetSkillContent("demo-skill")
+	if err != nil {
+		t.Fatalf("GetSkillContent() 失败: %v", err)
+	}
+	if !strings.Contains(content, "# Demo Skill") {
+		t.Fatalf("期望读取统一目录中的 SKILL.md，得到:\n%s", content)
+	}
+
+	updated := "---\nname: Demo Skill\ndescription: changed\n---\n\n# Demo Skill\n"
+	if err := ss.SaveSkillContent("demo-skill", updated); err != nil {
+		t.Fatalf("SaveSkillContent() 失败: %v", err)
+	}
+
+	saved, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("读取更新后 SKILL.md 失败: %v", err)
+	}
+	if string(saved) != updated {
+		t.Fatalf("期望 SKILL.md 写回统一目录，得到:\n%s", string(saved))
+	}
+}
+
+func createSkillFixture(t *testing.T, skillDir, directory, name, description, extraFrontMatter string) {
+	t.Helper()
+
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("创建 skill fixture 目录失败: %v", err)
+	}
+
+	frontMatter := "name: " + name + "\n" + "description: " + description + "\n"
+	if extraFrontMatter != "" {
+		frontMatter += extraFrontMatter
+	}
+	content := "---\n" + frontMatter + "---\n\n# " + name + "\n"
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("写入 skill fixture 失败: %v", err)
+	}
+}
+
+func assertSkillDirExists(t *testing.T, path string) {
+	t.Helper()
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("期望 skill 目录存在 %s: %v", path, err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("期望 %s 是目录", path)
+	}
+}
+
 func setTestHomeDir(t *testing.T, home string) {
 	t.Helper()
 	t.Setenv("HOME", home)
