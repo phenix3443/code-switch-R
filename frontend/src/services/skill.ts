@@ -48,6 +48,29 @@ export type SkillLinkStatus = {
   codex: SkillLinkEntry
 }
 
+export type BackupRecord = {
+  platform?: string
+  path?: string
+  created_at?: string
+}
+
+export type MigrationRecord = {
+  platform?: string
+  directory?: string
+  status?: string
+  message?: string
+  created_at?: string
+}
+
+export type SkillDiagnostics = {
+  user_skills_path: string
+  backup_root: string
+  claude_link_path: string
+  codex_link_path: string
+  backups: BackupRecord[]
+  migrations: MigrationRecord[]
+}
+
 export const fetchSkills = async (): Promise<SkillSummary[]> => {
   const response = await Call.ByName('codeswitch/services.SkillService.ListSkills')
   return (response as SkillSummary[]) ?? []
@@ -75,6 +98,11 @@ export const fetchSkillLinkStatus = async (): Promise<SkillLinkStatus> => {
 
 export const ensureSkillLinks = async (): Promise<void> => {
   await Call.ByName('codeswitch/services.SkillService.EnsureSkillLinks')
+}
+
+export const fetchSkillDiagnostics = async (): Promise<SkillDiagnostics> => {
+  const response = await Call.ByName('codeswitch/services.SkillService.GetSkillDiagnostics')
+  return response as SkillDiagnostics
 }
 
 export const installSkill = async (
@@ -105,6 +133,18 @@ export const saveSkillContent = async (directory: string, content: string): Prom
 
 export const openUserSkillsFolder = async (): Promise<void> => {
   await Call.ByName('codeswitch/services.SkillService.OpenUserSkillsFolder')
+}
+
+export const openInstalledSkillFolder = async (directory: string): Promise<void> => {
+  await Call.ByName('codeswitch/services.SkillService.OpenInstalledSkillFolder', directory)
+}
+
+export const openPlatformSkillsLink = async (platform: string): Promise<void> => {
+  await Call.ByName('codeswitch/services.SkillService.OpenPlatformSkillsLink', platform)
+}
+
+export const openSkillBackup = async (path: string): Promise<void> => {
+  await Call.ByName('codeswitch/services.SkillService.OpenSkillBackup', path)
 }
 
 export const fetchSkillRepos = async (): Promise<SkillRepoConfig[]> => {

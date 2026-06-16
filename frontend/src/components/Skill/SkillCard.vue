@@ -1,275 +1,273 @@
 <template>
-  <article class="skill-card-installed">
-    <div class="skill-card-header">
-      <div class="skill-card-toggle">
-        <button
-          type="button"
-          :class="['toggle-switch', { enabled: skill.enabled }]"
-          :disabled="toggling"
-          :title="t('components.skill.actions.toggle')"
-          @click="$emit('toggle', skill, !skill.enabled)"
-        >
-          <span class="toggle-slider" :class="{ toggling: toggling }"></span>
-        </button>
-      </div>
+  <button
+    type="button"
+    :class="[
+      'skill-row',
+      {
+        selected,
+        conflict,
+        installed: skill.installed,
+        recommended: !skill.installed
+      }
+    ]"
+    @click="$emit('select', skill)"
+  >
+    <div class="skill-row-icon" :class="{ installed: skill.installed, conflict }">
+      <span>{{ avatar }}</span>
+    </div>
 
-      <div class="skill-card-info">
-        <div class="skill-card-meta">
-          <p class="skill-card-eyebrow">{{ skill.directory }}</p>
-          <h3 class="skill-card-title">{{ skill.name }}</h3>
-        </div>
-        <p class="skill-card-desc">
-          {{ skill.description || t('components.skill.list.noDescription') }}
-        </p>
-        <div class="skill-card-badges">
-          <span v-if="skill.license_file" class="skill-badge license">
-            {{ t('components.skill.license.complete', { file: skill.license_file }) }}
+    <div class="skill-row-main">
+      <div class="skill-row-head">
+        <h3 class="skill-row-name">{{ skill.name }}</h3>
+        <div class="skill-row-badges">
+          <span v-if="skill.installed" class="row-badge enabled" :class="{ off: !skill.enabled }">
+            {{ skill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled') }}
+          </span>
+          <span v-if="conflict" class="row-badge conflict">
+            {{ t('components.skill.badges.conflict') }}
           </span>
         </div>
       </div>
-
-      <div class="skill-card-actions">
-        <button
-          type="button"
-          class="ghost-icon sm"
-          :title="expanded ? t('components.skill.actions.hideContent') : t('components.skill.actions.viewContent')"
-          :data-tooltip="expanded ? t('components.skill.actions.hideContent') : t('components.skill.actions.viewContent')"
-          @click="$emit('expand', skill)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ rotated: expanded }">
-            <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-              stroke-linejoin="round" />
-          </svg>
-        </button>
-        <button
-          v-if="skill.readme_url"
-          type="button"
-          class="ghost-icon sm"
-          :title="t('components.skill.actions.view')"
-          :data-tooltip="t('components.skill.actions.view')"
-          @click="$emit('view', skill.readme_url)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 5h7v7M19 5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6"
-              stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M11 6H7a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-4" fill="none" stroke="currentColor"
-              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="ghost-icon sm danger"
-          :title="t('components.skill.actions.uninstall')"
-          :data-tooltip="t('components.skill.actions.uninstall')"
-          :disabled="uninstalling"
-          @click="$emit('uninstall', skill)"
-        >
-          <svg v-if="!uninstalling" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.6"
-              stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M6.5 7l-.5 12a2 2 0 002 2h8a2 2 0 002-2L17.5 7" fill="none" stroke="currentColor"
-              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <span v-else class="skill-action-spinner" aria-hidden="true"></span>
-        </button>
-      </div>
+      <p class="skill-row-desc">{{ skill.description || t('components.skill.list.noDescription') }}</p>
+      <p class="skill-row-source">{{ sourceLabel }}</p>
     </div>
 
-    <transition name="expand">
-      <div v-if="expanded" class="skill-card-content">
-        <div v-if="loadingContent" class="skill-content-loading">
-          {{ t('components.skill.actions.loading') }}
-        </div>
-        <pre v-else class="skill-content-pre">{{ content }}</pre>
-      </div>
-    </transition>
-  </article>
+    <div class="skill-row-actions">
+      <button
+        v-if="showInstallButton"
+        type="button"
+        class="row-install-btn"
+        :disabled="disabled || loading"
+        @click.stop="$emit('install', skill)"
+      >
+        <span v-if="!loading">{{ t('components.skill.actions.install') }}</span>
+        <span v-else class="skill-action-spinner" aria-hidden="true"></span>
+      </button>
+
+      <button
+        v-else
+        type="button"
+        class="ghost-icon sm"
+        :title="t('components.skill.actions.more')"
+        @click.stop="$emit('menu', skill)"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="currentColor" />
+        </svg>
+      </button>
+    </div>
+  </button>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getSkillContent, type SkillSummary } from '../../services/skill'
+import type { SkillSummary } from '../../services/skill'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   skill: SkillSummary
-  expanded: boolean
-  toggling: boolean
-  uninstalling: boolean
-}>()
+  selected?: boolean
+  conflict?: boolean
+  loading?: boolean
+  disabled?: boolean
+  showInstallButton?: boolean
+}>(), {
+  selected: false,
+  conflict: false,
+  loading: false,
+  disabled: false,
+  showInstallButton: false
+})
 
 defineEmits<{
-  toggle: [skill: SkillSummary, enabled: boolean]
-  expand: [skill: SkillSummary]
-  uninstall: [skill: SkillSummary]
-  view: [url: string]
+  select: [skill: SkillSummary]
+  install: [skill: SkillSummary]
+  menu: [skill: SkillSummary]
 }>()
 
 const { t } = useI18n()
 
-const content = ref('')
-const loadingContent = ref(false)
+const avatar = computed(() => {
+  const source = props.skill.name?.trim() || props.skill.directory?.trim() || '?'
+  return source.charAt(0).toUpperCase()
+})
 
-// Load content when expanded
-watch(() => props.expanded, async (isExpanded) => {
-  if (isExpanded && !content.value) {
-    loadingContent.value = true
-    try {
-      content.value = await getSkillContent(props.skill.directory)
-    } catch (error) {
-      console.error('failed to load skill content', error)
-      content.value = t('components.skill.actions.loadFailed')
-    } finally {
-      loadingContent.value = false
-    }
+const sourceLabel = computed(() => {
+  if (props.skill.repo_owner && props.skill.repo_name) {
+    return `${props.skill.repo_owner}/${props.skill.repo_name}`
   }
+  return props.skill.source_group_label || t('components.skill.groups.unknownSource')
 })
 </script>
 
 <style scoped>
-.skill-card-installed {
-  background: var(--mac-surface-strong); /* fallback for old WebKit */
-  background: color-mix(in srgb, var(--mac-surface) 90%, transparent);
-  border: 1px solid var(--mac-border);
-  border-radius: 16px;
-  overflow: hidden;
+.skill-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
-.skill-card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 16px 20px;
+.skill-row:hover {
+  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
+  border-color: color-mix(in srgb, var(--mac-border) 70%, transparent);
 }
 
-.skill-card-toggle {
-  flex-shrink: 0;
-  padding-top: 4px;
+.skill-row.selected {
+  background: color-mix(in srgb, var(--mac-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--mac-accent) 36%, var(--mac-border));
 }
 
-.toggle-switch {
-  position: relative;
-  width: 44px;
-  height: 24px;
+.skill-row.conflict {
+  border-color: color-mix(in srgb, #ef4444 30%, var(--mac-border));
+}
+
+.skill-row-icon {
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
-  border: none;
-  background: var(--mac-border);
-  cursor: pointer;
-  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.28), transparent 55%),
+    linear-gradient(145deg, rgba(10, 132, 255, 0.28), rgba(16, 185, 129, 0.22));
+  border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
+  color: var(--mac-text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-.toggle-switch.enabled {
-  background: #22c55e;
+.skill-row-icon.conflict {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), transparent 55%),
+    linear-gradient(145deg, rgba(239, 68, 68, 0.34), rgba(245, 158, 11, 0.26));
 }
 
-.toggle-switch:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.toggle-slider {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background: white;
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch.enabled .toggle-slider {
-  transform: translateX(20px);
-}
-
-.toggle-slider.toggling {
-  opacity: 0.7;
-}
-
-.skill-card-info {
-  flex: 1;
+.skill-row-main {
   min-width: 0;
 }
 
-.skill-card-meta {
-  margin-bottom: 8px;
-}
-
-.skill-card-eyebrow {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--mac-text-secondary);
-  margin: 0 0 4px;
-}
-
-.skill-card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.skill-card-desc {
-  font-size: 0.85rem;
-  color: var(--mac-text-secondary);
-  line-height: 1.4;
-  margin: 0 0 8px;
-}
-
-.skill-card-badges {
+.skill-row-head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
-.skill-badge {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--mac-surface);
-  color: var(--mac-text-secondary);
+.skill-row-name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.skill-badge.license {
-  background: rgba(245, 158, 11, 0.15); /* fallback for old WebKit */
-  background: color-mix(in srgb, #f59e0b 15%, transparent);
-  color: #f59e0b;
-}
-
-.skill-card-actions {
+.skill-row-badges {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex-shrink: 0;
 }
 
-.skill-card-actions .ghost-icon {
-  width: 32px;
-  height: 32px;
+.row-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-.skill-card-actions .ghost-icon svg {
-  width: 18px;
-  height: 18px;
-  transition: transform 0.2s ease;
+.row-badge.enabled {
+  color: #22c55e;
+  background: color-mix(in srgb, #22c55e 18%, transparent);
 }
 
-.skill-card-actions .ghost-icon svg.rotated {
-  transform: rotate(180deg);
+.row-badge.enabled.off {
+  color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 18%, transparent);
 }
 
-.skill-card-actions .ghost-icon.danger {
+.row-badge.conflict {
   color: #ef4444;
+  background: color-mix(in srgb, #ef4444 18%, transparent);
 }
 
-.skill-card-actions .ghost-icon:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.skill-row-desc,
+.skill-row-source {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-row-desc {
+  font-size: 0.82rem;
+  color: var(--mac-text-secondary);
+}
+
+.skill-row-source {
+  font-size: 0.74rem;
+  color: color-mix(in srgb, var(--mac-text-secondary) 82%, transparent);
+}
+
+.skill-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-install-btn {
+  min-width: 66px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--mac-accent) 24%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mac-accent) 88%, white 8%);
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.row-install-btn:disabled {
+  opacity: 0.55;
+}
+
+.ghost-icon.sm {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mac-text-secondary);
+}
+
+.ghost-icon.sm:hover {
+  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
+  color: var(--mac-text);
+}
+
+.ghost-icon.sm svg {
+  width: 16px;
+  height: 16px;
 }
 
 .skill-action-spinner {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid currentColor;
   border-top-color: transparent;
@@ -277,60 +275,7 @@ watch(() => props.expanded, async (isExpanded) => {
   display: inline-block;
 }
 
-/* Content Panel */
-.skill-card-content {
-  border-top: 1px solid var(--mac-border);
-  background: var(--mac-surface-strong); /* fallback for old WebKit */
-  background: color-mix(in srgb, var(--mac-surface) 50%, transparent);
-  max-height: 400px;
-  overflow: auto;
-}
-
-.skill-content-loading {
-  padding: 16px 20px;
-  color: var(--mac-text-secondary);
-  font-size: 0.9rem;
-}
-
-.skill-content-pre {
-  margin: 0;
-  padding: 16px 20px;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--mac-text);
-}
-
-/* Expand Transition */
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.2s ease;
-  max-height: 400px;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-/* Dark Mode */
-html.dark .skill-card-installed {
-  background: var(--mac-surface); /* fallback for old WebKit */
-  background: color-mix(in srgb, var(--mac-surface) 70%, transparent);
-}
-
-html.dark .skill-card-content {
-  background: var(--mac-surface); /* fallback for old WebKit */
-  background: color-mix(in srgb, var(--mac-surface) 30%, transparent);
-}
-
 @keyframes skill-spin {
-  from {
-    transform: rotate(0deg);
-  }
   to {
     transform: rotate(360deg);
   }
