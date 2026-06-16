@@ -277,6 +277,95 @@ func TestGetAndSaveSkillContentUseUnifiedUserSkillsDirectory(t *testing.T) {
 	}
 }
 
+func TestListInstalledSkillsUsesProvenanceGroups(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	createSkillFixture(t, filepath.Join(getUserSkillsPath(), "repo-skill"), "repo-skill", "Repo Skill", "repo desc", "")
+	createSkillFixture(t, filepath.Join(getUserSkillsPath(), "local-skill"), "local-skill", "Local Skill", "local desc", "")
+
+	store := newDefaultSkillStore()
+	store.Provenance["repo-skill"] = skillProvenance{
+		Type:       "github",
+		RepoOwner:  "owner",
+		RepoName:   "repo",
+		RepoBranch: "main",
+	}
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	skills, err := ss.ListInstalledSkills()
+	if err != nil {
+		t.Fatalf("ListInstalledSkills() 失败: %v", err)
+	}
+	if len(skills) != 2 {
+		t.Fatalf("期望返回 2 个 installed skills，得到 %d", len(skills))
+	}
+
+	byDir := make(map[string]Skill)
+	for _, skill := range skills {
+		byDir[skill.Directory] = skill
+	}
+
+	repoSkill := byDir["repo-skill"]
+	if repoSkill.SourceGroupKey != "owner/repo" || repoSkill.SourceGroupLabel != "owner/repo" {
+		t.Fatalf("期望 repo skill 按 owner/repo 分组，得到 %#v", repoSkill)
+	}
+	if repoSkill.RepoOwner != "owner" || repoSkill.RepoName != "repo" || repoSkill.RepoBranch != "main" {
+		t.Fatalf("期望 repo provenance 被稳定填充，得到 %#v", repoSkill)
+	}
+
+	localSkill := byDir["local-skill"]
+	if localSkill.SourceGroupKey != "local" || localSkill.SourceGroupLabel != "Local / Unknown Source" {
+		t.Fatalf("期望未知来源归入 local 分组，得到 %#v", localSkill)
+	}
+}
+
+func TestListGroupedSkillsSplitsInstalledAndAvailableGroups(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	createSkillFixture(t, filepath.Join(getUserSkillsPath(), "installed-skill"), "installed-skill", "Installed Skill", "installed desc", "")
+
+	store := newDefaultSkillStore()
+	store.Provenance["installed-skill"] = skillProvenance{
+		Type:       "github",
+		RepoOwner:  "owner",
+		RepoName:   "repo",
+		RepoBranch: "main",
+	}
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	repoRoot := filepath.Join(home, "remote-snapshot")
+	createSkillFixture(t, filepath.Join(repoRoot, "available-skill"), "available-skill", "Available Skill", "available desc", "")
+	ss.repoSnapshotter = func(repo skillRepoConfig) (string, string, func(), error) {
+		return repoRoot, "main", func() {}, nil
+	}
+
+	grouped, err := ss.ListGroupedSkills()
+	if err != nil {
+		t.Fatalf("ListGroupedSkills() 失败: %v", err)
+	}
+
+	if len(grouped.Installed) != 1 {
+		t.Fatalf("期望 1 个 installed group，得到 %#v", grouped.Installed)
+	}
+	if grouped.Installed[0].GroupKey != "owner/repo" || len(grouped.Installed[0].Skills) != 1 {
+		t.Fatalf("installed groups 不符合预期，得到 %#v", grouped.Installed)
+	}
+	if len(grouped.Available) != 1 {
+		t.Fatalf("期望 1 个 available group，得到 %#v", grouped.Available)
+	}
+	if grouped.Available[0].GroupKey == "" || len(grouped.Available[0].Skills) != 1 {
+		t.Fatalf("available groups 不符合预期，得到 %#v", grouped.Available)
+	}
+}
+
 func createSkillFixture(t *testing.T, skillDir, directory, name, description, extraFrontMatter string) {
 	t.Helper()
 

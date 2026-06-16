@@ -15,19 +15,55 @@ export function AddRepo(repo: $models.skillRepoConfig): $CancellablePromise<$mod
     });
 }
 
+export function EnsureSkillLinks(): $CancellablePromise<void> {
+    return $Call.ByID(1789465725);
+}
+
 /**
  * GetSkillContent 获取技能的 SKILL.md 内容
  */
-export function GetSkillContent(directory: string, platform: string, location: string): $CancellablePromise<string> {
-    return $Call.ByID(3743777913, directory, platform, location);
+export function GetSkillContent(directory: string): $CancellablePromise<string> {
+    return $Call.ByID(3743777913, directory);
+}
+
+export function GetSkillLinkStatus(): $CancellablePromise<$models.SkillLinkStatus> {
+    return $Call.ByID(2399943974).then(($result: any) => {
+        return $$createType2($result);
+    });
 }
 
 /**
  * InstallSkill installs a skill directory from the configured repositories.
- * 支持 platform 和 location 参数，用于指定安装的平台和位置
  */
-export function InstallSkill(req: $models.installRequest): $CancellablePromise<void> {
-    return $Call.ByID(2924128557, req);
+export function InstallSkill(directory: string, repoOwner: string, repoName: string, repoBranch: string): $CancellablePromise<void> {
+    return $Call.ByID(2924128557, directory, repoOwner, repoName, repoBranch);
+}
+
+/**
+ * ListAvailableSkills 返回远程 catalog 中可安装 skills。
+ */
+export function ListAvailableSkills(): $CancellablePromise<$models.Skill[]> {
+    return $Call.ByID(2360640006).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
+ * ListGroupedSkills 返回按来源仓库分组的 installed/available 数据。
+ */
+export function ListGroupedSkills(): $CancellablePromise<$models.GroupedSkills> {
+    return $Call.ByID(3230213139).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
+ * ListInstalledSkills 返回统一目录中的已安装 skills。
+ */
+export function ListInstalledSkills(): $CancellablePromise<$models.Skill[]> {
+    return $Call.ByID(3887832687).then(($result: any) => {
+        return $$createType4($result);
+    });
 }
 
 export function ListRepos(): $CancellablePromise<$models.skillRepoConfig[]> {
@@ -37,28 +73,19 @@ export function ListRepos(): $CancellablePromise<$models.skillRepoConfig[]> {
 }
 
 /**
- * ListSkills aggregates skills from configured repositories and the local install directory.
+ * ListSkills 保持兼容，返回 installed + available 平铺结果。
  */
 export function ListSkills(): $CancellablePromise<$models.Skill[]> {
     return $Call.ByID(3387382203).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 /**
- * ListSkillsForPlatform 列出指定平台的技能（用户级 + 项目级）
+ * OpenUserSkillsFolder 打开统一技能目录
  */
-export function ListSkillsForPlatform(platform: string): $CancellablePromise<$models.Skill[]> {
-    return $Call.ByID(2689607053, platform).then(($result: any) => {
-        return $$createType3($result);
-    });
-}
-
-/**
- * OpenSkillFolder 打开技能目录
- */
-export function OpenSkillFolder(platform: string, location: string): $CancellablePromise<void> {
-    return $Call.ByID(216615946, platform, location);
+export function OpenUserSkillsFolder(): $CancellablePromise<void> {
+    return $Call.ByID(647422032);
 }
 
 export function RemoveRepo(owner: string, name: string): $CancellablePromise<$models.skillRepoConfig[]> {
@@ -70,31 +97,26 @@ export function RemoveRepo(owner: string, name: string): $CancellablePromise<$mo
 /**
  * SaveSkillContent 保存技能的 SKILL.md 内容
  */
-export function SaveSkillContent(directory: string, platform: string, location: string, content: string): $CancellablePromise<void> {
-    return $Call.ByID(3441672290, directory, platform, location, content);
+export function SaveSkillContent(directory: string, content: string): $CancellablePromise<void> {
+    return $Call.ByID(3441672290, directory, content);
 }
 
 /**
  * ToggleSkill 切换技能的启用状态
  * 通过修改 SKILL.md 的 disable-model-invocation 字段实现
  */
-export function ToggleSkill(directory: string, platform: string, location: string, enabled: boolean): $CancellablePromise<void> {
-    return $Call.ByID(2154856646, directory, platform, location, enabled);
+export function ToggleSkill(directory: string, enabled: boolean): $CancellablePromise<void> {
+    return $Call.ByID(2154856646, directory, enabled);
 }
 
 export function UninstallSkill(directory: string): $CancellablePromise<void> {
     return $Call.ByID(3488362258, directory);
 }
 
-/**
- * UninstallSkillEx 卸载技能（支持多平台多位置）
- */
-export function UninstallSkillEx(directory: string, platform: string, location: string): $CancellablePromise<void> {
-    return $Call.ByID(3072081143, directory, platform, location);
-}
-
 // Private type creation functions
 const $$createType0 = $models.skillRepoConfig.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $models.Skill.createFrom;
-const $$createType3 = $Create.Array($$createType2);
+const $$createType2 = $models.SkillLinkStatus.createFrom;
+const $$createType3 = $models.Skill.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $models.GroupedSkills.createFrom;
