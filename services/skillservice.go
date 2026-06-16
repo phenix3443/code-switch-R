@@ -49,10 +49,10 @@ type Skill struct {
 	Installed   bool   `json:"installed"`
 
 	// 新增字段
-	Enabled         bool   `json:"enabled"`                     // 是否启用（从 SKILL.md 读取）
-	LicenseFile     string `json:"license_file,omitempty"`      // 许可证文件路径
-	Platform        string `json:"platform,omitempty"`          // "claude" | "codex"
-	InstallLocation string `json:"install_location,omitempty"`  // "user" | "project"
+	Enabled         bool   `json:"enabled"`                    // 是否启用（从 SKILL.md 读取）
+	LicenseFile     string `json:"license_file,omitempty"`     // 许可证文件路径
+	Platform        string `json:"platform,omitempty"`         // "claude" | "codex"
+	InstallLocation string `json:"install_location,omitempty"` // "user" | "project"
 
 	// 仓库字段
 	RepoOwner  string `json:"repo_owner,omitempty"`
@@ -74,13 +74,38 @@ type skillMetadataExtended struct {
 }
 
 type skillStore struct {
-	Skills map[string]skillState `json:"skills"`
-	Repos  []skillRepoConfig     `json:"repos"`
+	Skills           map[string]skillState      `json:"skills,omitempty"`
+	EnabledOverrides map[string]bool            `json:"enabled_overrides,omitempty"`
+	Provenance       map[string]skillProvenance `json:"provenance,omitempty"`
+	Migrations       []migrationRecord          `json:"migrations,omitempty"`
+	Backups          []backupRecord             `json:"backups,omitempty"`
+	Repos            []skillRepoConfig          `json:"repos"`
 }
 
 type skillState struct {
 	Installed   bool      `json:"installed"`
 	InstalledAt time.Time `json:"installed_at,omitempty"`
+}
+
+type skillProvenance struct {
+	Type       string `json:"type"`
+	RepoOwner  string `json:"repo_owner,omitempty"`
+	RepoName   string `json:"repo_name,omitempty"`
+	RepoBranch string `json:"repo_branch,omitempty"`
+}
+
+type migrationRecord struct {
+	Platform  string    `json:"platform,omitempty"`
+	Directory string    `json:"directory,omitempty"`
+	Status    string    `json:"status,omitempty"`
+	Message   string    `json:"message,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+}
+
+type backupRecord struct {
+	Platform  string    `json:"platform,omitempty"`
+	Path      string    `json:"path,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type skillRepoConfig struct {
@@ -95,8 +120,8 @@ type installRequest struct {
 	RepoOwner string `json:"repo_owner"`
 	RepoName  string `json:"repo_name"`
 	Branch    string `json:"repo_branch"`
-	Platform  string `json:"platform"`  // "claude" | "codex"
-	Location  string `json:"location"`  // "user" | "project"
+	Platform  string `json:"platform"` // "claude" | "codex"
+	Location  string `json:"location"` // "user" | "project"
 }
 
 type SkillService struct {
@@ -116,6 +141,38 @@ func NewSkillService() *SkillService {
 		storePath:  filepath.Join(home, skillStoreDir, skillStoreFile),
 		installDir: filepath.Join(home, ".claude", "skills"),
 	}
+}
+
+func getUserSkillsPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
+	return filepath.Join(home, ".agent", "skills")
+}
+
+func getPlatformSkillsLinkPath(platform string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
+
+	switch strings.ToLower(strings.TrimSpace(platform)) {
+	case skillPlatformClaude:
+		return filepath.Join(home, ".claude", "skills")
+	case skillPlatformCodex:
+		return filepath.Join(home, ".codex", "skills")
+	default:
+		return ""
+	}
+}
+
+func getSkillBackupRoot() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
+	return filepath.Join(home, skillStoreDir, "backups", "skills")
 }
 
 // getInstallPath 根据平台和位置返回 skills 目录路径
@@ -832,23 +889,59 @@ func (ss *SkillService) loadStoreLocked() (skillStore, error) {
 	data, err := os.ReadFile(ss.storePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			store := skillStore{Skills: make(map[string]skillState)}
-			store.ensureRepos()
+			store := skillStore{}
+			store.ensureState()
 			return store, nil
 		}
-		return skillStore{Skills: make(map[string]skillState)}, err
+		return newDefaultSkillStore(), err
 	}
 	store := skillStore{}
 	if len(data) > 0 {
 		if err := json.Unmarshal(data, &store); err != nil {
-			return skillStore{Skills: make(map[string]skillState)}, err
+			return newDefaultSkillStore(), err
 		}
 	}
+	store.ensureState()
+	return store, nil
+}
+
+func newDefaultSkillStore() skillStore {
+	store := skillStore{}
+	store.ensureState()
+	return store
+}
+
+func (store *skillStore) ensureState() {
 	if store.Skills == nil {
 		store.Skills = make(map[string]skillState)
 	}
+	if store.EnabledOverrides == nil {
+		store.EnabledOverrides = make(map[string]bool)
+	}
+	if store.Provenance == nil {
+		store.Provenance = make(map[string]skillProvenance)
+	}
+	if store.Migrations == nil {
+		store.Migrations = make([]migrationRecord, 0)
+	}
+	if store.Backups == nil {
+		store.Backups = make([]backupRecord, 0)
+	}
+	store.migrateLegacySkills()
 	store.ensureRepos()
-	return store, nil
+}
+
+func (store *skillStore) migrateLegacySkills() {
+	for directory := range store.Skills {
+		directory = strings.TrimSpace(directory)
+		if directory == "" {
+			continue
+		}
+		if _, exists := store.Provenance[directory]; exists {
+			continue
+		}
+		store.Provenance[directory] = skillProvenance{Type: "local"}
+	}
 }
 
 func (store *skillStore) ensureRepos() {
@@ -903,8 +996,10 @@ func (ss *SkillService) saveStoreLocked(store skillStore) error {
 	if err := os.MkdirAll(filepath.Dir(ss.storePath), 0o755); err != nil {
 		return err
 	}
-	store.ensureRepos()
-	data, err := json.MarshalIndent(store, "", "  ")
+	store.ensureState()
+	persisted := store
+	persisted.Skills = nil
+	data, err := json.MarshalIndent(persisted, "", "  ")
 	if err != nil {
 		return err
 	}
