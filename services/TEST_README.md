@@ -68,7 +68,7 @@ go test ./services/... -run 'TestSkill|TestSkillLinks' -v
 go test ./services/... -run TestSkillLinks -v
 
 # 验证启动时自动执行 links 检查
-go test ./services/... -run TestSkillServiceStart -v
+go test ./services/... -run TestSkillServiceServiceStartup -v
 ```
 
 ### skills 覆盖重点
@@ -87,7 +87,7 @@ go test ./services/... -run TestSkillServiceStart -v
 - ✅ 双平台重复内容去重
 - ✅ 备份记录生成
 - ✅ `EnsureSkillLinks()` reconcile `EnabledOverrides`
-- ✅ `SkillService.Start()` 启动时自动执行 links 检查，冲突不阻断启动
+- ✅ `SkillService.ServiceStartup()` 启动时自动执行 links 检查，冲突不阻断启动
 
 ## 🎯 测试覆盖范围
 

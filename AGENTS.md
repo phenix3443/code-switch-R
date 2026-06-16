@@ -34,7 +34,7 @@ Test focus areas (see `services/TEST_README.md`): model wildcard matching, model
 ## Architecture
 
 ### Service registration (the spine)
-`main.go` constructs every service, wires their dependencies by hand (constructors take other services as args), and registers them with `application.New({ Services: [...] })`. Each `*Service` struct's exported methods are auto-exposed to the frontend as TypeScript bindings under `frontend/bindings/`. **Adding a backend method callable from the UI = add an exported method to a registered service, then regenerate bindings.** Services implementing `Start()`/`Stop()` get lifecycle hooks from Wails.
+`main.go` constructs every service, wires their dependencies by hand (constructors take other services as args), and registers them with `application.New({ Services: [...] })`. Each `*Service` struct's exported methods are auto-exposed to the frontend as TypeScript bindings under `frontend/bindings/`. **Adding a backend method callable from the UI = add an exported method to a registered service, then regenerate bindings.** In Wails v3, lifecycle hooks are `ServiceStartup(ctx, options)` / `ServiceShutdown()`.
 
 ### The relay (`services/providerrelay.go`, ~80KB — the core)
 A Gin HTTP server started in a goroutine from `main.go` (`providerRelay.Start()`). Routes in `registerRoutes`:
@@ -68,7 +68,7 @@ Skills are now unified under `~/.agent/skills`. Claude and Codex no longer maint
 - `~/.claude/skills -> ~/.agent/skills`
 - `~/.codex/skills -> ~/.agent/skills`
 
-`SkillService.Start()` runs `EnsureSkillLinks()` once at startup to repair links, migrate legacy platform directories, reconcile enabled overrides back into `SKILL.md`, and persist backup/migration diagnostics for the UI. Conflicts are recorded into `Migrations` for the Skills page to surface rather than blocking app startup.
+`SkillService.ServiceStartup()` runs `EnsureSkillLinks()` once at startup to repair links, migrate legacy platform directories, reconcile enabled overrides back into `SKILL.md`, and persist backup/migration diagnostics for the UI. Conflicts are recorded into `Migrations` for the Skills page to surface rather than blocking app startup.
 
 ## Conventions
 

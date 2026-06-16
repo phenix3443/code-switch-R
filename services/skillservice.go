@@ -2,6 +2,7 @@ package services
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"gopkg.in/yaml.v3"
 )
 
@@ -151,7 +153,7 @@ func NewSkillService() *SkillService {
 	}
 }
 
-// Start Wails 生命周期方法：启动时执行一次 skills 链接修复/迁移检查。
+// Start 兼容旧调用方，实际 Wails v3 生命周期入口见 ServiceStartup。
 func (ss *SkillService) Start() error {
 	if err := ss.EnsureSkillLinks(); err != nil {
 		log.Printf("skill links startup check failed: %v", err)
@@ -159,9 +161,19 @@ func (ss *SkillService) Start() error {
 	return nil
 }
 
-// Stop Wails 生命周期方法
+// Stop 兼容旧调用方。
 func (ss *SkillService) Stop() error {
 	return nil
+}
+
+// ServiceStartup Wails v3 生命周期方法：启动时执行一次 skills 链接修复/迁移检查。
+func (ss *SkillService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	return ss.Start()
+}
+
+// ServiceShutdown Wails v3 生命周期方法。
+func (ss *SkillService) ServiceShutdown() error {
+	return ss.Stop()
 }
 
 func getUserSkillsPath() string {
@@ -913,11 +925,14 @@ func normalizeSkillProvenance(provenance skillProvenance) skillProvenance {
 }
 
 func isProvenanceConflict(existing, incoming skillProvenance) bool {
-	existing = normalizeSkillProvenance(existing)
-	incoming = normalizeSkillProvenance(incoming)
-	if existing.Type == "" {
+	if strings.TrimSpace(existing.Type) == "" &&
+		strings.TrimSpace(existing.RepoOwner) == "" &&
+		strings.TrimSpace(existing.RepoName) == "" &&
+		strings.TrimSpace(existing.RepoBranch) == "" {
 		return false
 	}
+	existing = normalizeSkillProvenance(existing)
+	incoming = normalizeSkillProvenance(incoming)
 	if existing.Type != incoming.Type {
 		return true
 	}

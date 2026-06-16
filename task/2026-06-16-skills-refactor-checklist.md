@@ -70,10 +70,15 @@
 - [ ] 4.10 空状态/链接异常/迁移冲突/备份成功失败（§6.14）
 - [ ] 4.11 移除 Claude/Codex 平台 tab 与三块旧结构（Project/User/Available）
 - **验收**：与截图视觉对照（分组徽标、列表行、详情 Tab、右信息栏均到位）；安装/卸载/启用/修复链接/查看备份 全链路手测通过
+  - [x] 实机验证 `修复链接`：隔离 HOME `/tmp/codeswitch-stage4-runhome` 下，桌面点击后 `~/.codex/skills` 恢复为指向 `~/.agent/skills` 的链接，`skill.json` 记录 codex 迁移与备份
+  - [x] 实机验证 `查看备份`：桌面弹窗展示 `/tmp/codeswitch-stage4-runhome/.code-switch/backups/skills/...` 备份记录，与 `skill.json` 一致
+  - [x] 实机验证 `启用/禁用`：桌面点击后 `demo-skill/SKILL.md` 中 `disable-model-invocation` 在 `true/false` 间切换
+  - [x] 实机验证 `安装`：桌面详情区点击 `artifacts-builder` 安装后，`/tmp/codeswitch-stage4-runhome/.agent/skills/artifacts-builder` 新增；运行日志记录 `SkillService.InstallSkill args=["artifacts-builder","ComposioHQ","awesome-claude-skills","master"]`
+  - [x] 实机验证 `卸载`：桌面弹出页内确认框后点击 `卸载`，`/tmp/codeswitch-stage4-runhome/.agent/skills/artifacts-builder` 被删除；运行日志记录 `SkillService.UninstallSkill args=["artifacts-builder"]`
 
 ## 阶段 5：首启迁移触发 + 收尾
 
-- [x] 5.1 在 `SkillService.Start()`（或 main 启动序列）触发一次 `EnsureSkillLinks()` + 迁移诊断，结果存 `Migrations`；`conflict` 不自动执行，仅置状态供 UI 提示
+- [x] 5.1 在 `SkillService.ServiceStartup()`（或 main 启动序列）触发一次 `EnsureSkillLinks()` + 迁移诊断，结果存 `Migrations`；`conflict` 不自动执行，仅置状态供 UI 提示
 - [x] 5.2 更新 `services/TEST_README.md` 增补 skills 链接/迁移/冲突测试说明
 - [x] 5.3 `go test ./services/... -cover` + `go vet` + 前端类型检查全绿（完成定义）
 - [x] 5.4 文档同步：配套方案标记「已实施」，如行为变化影响 `CLAUDE.md` 描述则同步

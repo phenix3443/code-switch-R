@@ -177,6 +177,42 @@ func TestInstallSkillBlocksConflictingDirectoryOwnership(t *testing.T) {
 	}
 }
 
+func TestInstallSkillAllowsFreshGitHubDirectoryWithoutExistingProvenance(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	repoRoot := filepath.Join(home, "repo")
+	createSkillFixture(t, filepath.Join(repoRoot, "fresh-skill"), "fresh-skill", "Fresh Skill", "demo desc", "")
+
+	store := newDefaultSkillStore()
+	store.Repos = []skillRepoConfig{
+		{Owner: "owner", Name: "repo", Branch: "main", Enabled: true},
+	}
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	ss.repoSnapshotter = func(repo skillRepoConfig) (string, string, func(), error) {
+		return repoRoot, repo.Branch, func() {}, nil
+	}
+
+	if err := ss.InstallSkill("fresh-skill", "owner", "repo", "main"); err != nil {
+		t.Fatalf("期望新目录可以正常安装，得到错误: %v", err)
+	}
+
+	assertSkillDirExists(t, filepath.Join(getUserSkillsPath(), "fresh-skill"))
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	provenance := store.Provenance["fresh-skill"]
+	if provenance.Type != "github" || provenance.RepoOwner != "owner" || provenance.RepoName != "repo" || provenance.RepoBranch != "main" {
+		t.Fatalf("期望写入 github provenance，得到 %#v", provenance)
+	}
+}
+
 func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
 	home := t.TempDir()
 	setTestHomeDir(t, home)
