@@ -6,5 +6,6 @@ bin
 CLAUDE.md
 .ace-tool/
 temp.txt
-*.exe
+/test_*.exe
+/updater.exe
 scripts/*.db
