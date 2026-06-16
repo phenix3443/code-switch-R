@@ -74,6 +74,16 @@ func (ss *SkillService) EnsureSkillLinks() error {
 		}
 	}
 
+	for directory, enabled := range store.EnabledOverrides {
+		skillMDPath := filepath.Join(userSkillsPath, directory, "SKILL.md")
+		if _, err := os.Stat(skillMDPath); err != nil {
+			continue
+		}
+		if err := ss.applyEnabledOverride(skillMDPath, enabled); err != nil {
+			errs = append(errs, fmt.Errorf("reconcile enabled override for %s failed: %w", directory, err))
+		}
+	}
+
 	if err := ss.saveStoreLocked(store); err != nil {
 		errs = append(errs, err)
 	}

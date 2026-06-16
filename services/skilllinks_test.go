@@ -3,6 +3,7 @@ package services
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -176,6 +177,32 @@ func TestSkillLinksAlreadyCorrectLink(t *testing.T) {
 	status := ss.GetSkillLinkStatus()
 	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, userSkills)
 	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, userSkills)
+}
+
+func TestEnsureSkillLinksReconcilesEnabledOverrides(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	createTestSkill(t, getUserSkillsPath(), "demo-skill", "Demo", "desc")
+
+	ss := NewSkillService()
+	store := newDefaultSkillStore()
+	store.EnabledOverrides["demo-skill"] = false
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	if err := ss.EnsureSkillLinks(); err != nil {
+		t.Fatalf("EnsureSkillLinks() 返回错误: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(getUserSkillsPath(), "demo-skill", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("读取 SKILL.md 失败: %v", err)
+	}
+	if !strings.Contains(string(content), "disable-model-invocation: true") {
+		t.Fatalf("期望 reconcile enabled override 到 SKILL.md，得到:\n%s", string(content))
+	}
 }
 
 func TestBackupPlatformDirCopiesOriginalContent(t *testing.T) {
