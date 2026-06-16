@@ -5,3 +5,7 @@ frontend/dist
 bin
 CLAUDE.md
 .ace-tool/
+temp.txt
+/test_*.exe
+/updater.exe
+scripts/*.db
