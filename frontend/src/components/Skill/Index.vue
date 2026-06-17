@@ -13,132 +13,39 @@
           <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </button>
+      <div class="menu-anchor">
+        <button class="ghost-icon" :title="t('components.skill.actions.more')" @click="toggleOverflowMenu">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="currentColor" />
+          </svg>
+        </button>
+        <div v-if="overflowMenuOpen" class="menu-popover global-menu-popover">
+          <button type="button" @click="openRepoModal">
+            {{ t('components.skill.repos.open') }}
+          </button>
+          <button type="button" @click="handleOpenFolder">
+            {{ t('components.skill.actions.openFolder') }}
+          </button>
+          <button type="button" @click="handleRepairLinks" :disabled="repairing">
+            {{ repairing ? t('components.skill.actions.repairing') : t('components.skill.actions.repairLinks') }}
+          </button>
+          <button type="button" @click="openBackupModal">
+            {{ t('components.skill.actions.viewBackups') }}
+          </button>
+          <button type="button" @click="conflictModalOpen = true" :disabled="!conflictRecords.length">
+            {{ t('components.skill.actions.viewConflicts') }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="skill-workspace">
-      <header class="skill-hero">
-        <div>
-          <h1>{{ t('components.skill.hero.title') }}</h1>
-          <p class="skill-hero-copy">{{ t('components.skill.hero.lead') }}</p>
-        </div>
-        <div class="skill-hero-meta">
-          <span class="hero-chip">{{ installedCount }} {{ t('components.skill.hero.installedCount') }}</span>
-          <span class="hero-chip">{{ availableCount }} {{ t('components.skill.hero.recommendedCount') }}</span>
-        </div>
-      </header>
-
-      <section class="status-strip">
-        <article class="status-card user" @click="handleOpenFolder">
-          <div class="status-card-head">
-            <h2>{{ t('components.skill.status.userSkills') }}</h2>
-            <span class="status-pill" :class="linkStatus?.user_skills_exists ? 'linked' : 'missing'">
-              {{ linkStatus?.user_skills_exists ? t('components.skill.status.linked') : t('components.skill.status.missing') }}
-            </span>
-          </div>
-          <p class="status-path">{{ diagnostics.user_skills_path }}</p>
-          <p class="status-meta">{{ t('components.skill.status.skillCount', { count: linkStatus?.user_skill_count ?? 0 }) }}</p>
-        </article>
-
-        <article class="status-card" :class="statusClass(linkStatus?.claude.status)" @click="openPlatformLink('claude')">
-          <div class="status-card-head">
-            <h2>{{ t('components.skill.status.claudeLink') }}</h2>
-            <span class="status-pill" :class="statusClass(linkStatus?.claude.status)">
-              {{ formatLinkStatus(linkStatus?.claude.status) }}
-            </span>
-          </div>
-          <p class="status-path">{{ diagnostics.claude_link_path }}</p>
-          <p class="status-meta">{{ linkStatus?.claude.target || t('components.skill.status.notDetected') }}</p>
-        </article>
-
-        <article class="status-card" :class="statusClass(linkStatus?.codex.status)" @click="openPlatformLink('codex')">
-          <div class="status-card-head">
-            <h2>{{ t('components.skill.status.codexLink') }}</h2>
-            <span class="status-pill" :class="statusClass(linkStatus?.codex.status)">
-              {{ formatLinkStatus(linkStatus?.codex.status) }}
-            </span>
-          </div>
-          <p class="status-path">{{ diagnostics.codex_link_path }}</p>
-          <p class="status-meta">{{ linkStatus?.codex.target || t('components.skill.status.notDetected') }}</p>
-        </article>
-      </section>
-
-      <section class="migration-summary">
-        <div class="migration-summary-main">
-          <div>
-            <p class="summary-label">{{ t('components.skill.summary.title') }}</p>
-            <h2>{{ summaryHeadline }}</h2>
-          </div>
-          <div class="summary-actions">
-            <button class="btn-secondary" @click="handleRepairLinks" :disabled="repairing">
-              {{ repairing ? t('components.skill.actions.repairing') : t('components.skill.actions.repairLinks') }}
-            </button>
-            <button class="btn-secondary" @click="backupModalOpen = true">
-              {{ t('components.skill.actions.viewBackups') }}
-            </button>
-            <button class="btn-secondary" @click="conflictModalOpen = true" :disabled="!conflictRecords.length">
-              {{ t('components.skill.actions.viewConflicts') }}
-            </button>
-          </div>
-        </div>
-        <div class="migration-summary-grid">
-          <div class="summary-metric">
-            <span>{{ t('components.skill.summary.lastBackup') }}</span>
-            <strong>{{ lastBackupLabel }}</strong>
-          </div>
-          <div class="summary-metric">
-            <span>{{ t('components.skill.summary.lastMigration') }}</span>
-            <strong>{{ lastMigrationLabel }}</strong>
-          </div>
-          <div class="summary-metric danger" v-if="conflictRecords.length">
-            <span>{{ t('components.skill.summary.conflicts') }}</span>
-            <strong>{{ conflictRecords.length }}</strong>
-          </div>
-          <div class="summary-metric" v-else>
-            <span>{{ t('components.skill.summary.conflicts') }}</span>
-            <strong>{{ t('components.skill.summary.none') }}</strong>
-          </div>
-        </div>
-      </section>
-
       <div v-if="skillsError" class="skill-banner error">{{ skillsError }}</div>
       <div v-else-if="notice" class="skill-banner">{{ notice }}</div>
 
       <section class="skill-layout">
         <aside class="skill-sidebar">
           <header class="sidebar-header">
-            <div class="sidebar-title-row">
-              <h2>SKILLS</h2>
-              <div class="sidebar-tools">
-                <button class="ghost-icon sm" :title="t('components.skill.actions.refresh')" :disabled="refreshing" @click="refresh">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ spin: refreshing }">
-                    <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-                <div class="menu-anchor">
-                  <button class="ghost-icon sm" :title="t('components.skill.actions.more')" @click="toggleOverflowMenu">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="currentColor" />
-                    </svg>
-                  </button>
-                  <div v-if="overflowMenuOpen" class="menu-popover">
-                    <button type="button" @click="openRepoModal">
-                      {{ t('components.skill.repos.open') }}
-                    </button>
-                    <button type="button" @click="handleOpenFolder">
-                      {{ t('components.skill.actions.openFolder') }}
-                    </button>
-                    <button type="button" @click="handleRepairLinks">
-                      {{ t('components.skill.actions.repairLinks') }}
-                    </button>
-                    <button type="button" @click="openBackupModal">
-                      {{ t('components.skill.actions.viewBackups') }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div class="search-shell">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M11 18a7 7 0 100-14 7 7 0 000 14zm8 3l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -255,171 +162,190 @@
                   {{ detailAvatar }}
                 </div>
                 <div class="detail-copy">
-                  <div class="detail-title-row">
-                    <h2>{{ selectedSkill.name }}</h2>
-                    <span v-if="selectedSkill.installed" class="row-badge enabled" :class="{ off: !selectedSkill.enabled }">
-                      {{ selectedSkill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled') }}
-                    </span>
-                    <span v-if="isConflictSkill(selectedSkill)" class="row-badge conflict">
-                      {{ t('components.skill.badges.conflict') }}
-                    </span>
+                  <p class="detail-publisher">{{ selectedSourceLabel }}</p>
+                  <h2>{{ selectedSkill.name }}</h2>
+                  <p class="detail-tagline">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
+                  <div class="detail-subline">
+                    <span>{{ selectedSkill.directory }}</span>
+                    <span>{{ selectedSkill.repo_branch || 'main' }}</span>
+                    <span>{{ selectedSkill.installed ? (selectedSkill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled')) : t('components.skill.groups.recommended') }}</span>
                   </div>
-                  <p class="detail-source">{{ selectedSourceLabel }}</p>
-                  <p class="detail-directory">{{ selectedSkill.directory }}</p>
-                  <p class="detail-description">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
                 </div>
               </div>
 
               <div class="detail-actions">
-                <button
-                  v-if="selectedSkill.installed"
-                  class="btn-primary"
-                  :disabled="togglingSkill === selectedSkill.directory || isConflictSkill(selectedSkill)"
-                  @click="handleToggle(selectedSkill, !selectedSkill.enabled)"
-                >
-                  {{ selectedSkill.enabled ? t('components.skill.actions.disableDropdown') : t('components.skill.actions.enableDropdown') }}
-                </button>
-                <button
-                  v-else
-                  class="btn-primary"
-                  :disabled="isInstallingSkill(selectedSkill) || !canInstallSkill(selectedSkill)"
-                  @click="handleInstall(selectedSkill)"
-                >
-                  {{ isInstallingSkill(selectedSkill) ? t('components.skill.install.installing') : t('components.skill.actions.install') }}
-                </button>
-
-                <button
-                  v-if="selectedSkill.installed"
-                  class="btn-secondary"
-                  :disabled="processingSkill === uninstallProcessingKey(selectedSkill)"
-                  @click="handleUninstall(selectedSkill)"
-                >
-                  {{ t('components.skill.actions.uninstallDropdown') }}
-                </button>
-
-                <button class="btn-secondary" @click="openSelectedFolder" :disabled="!selectedSkill.installed">
-                  {{ t('components.skill.actions.openSkillFolder') }}
-                </button>
-                <button class="btn-secondary" @click="openSkillRepo(selectedSkill)" :disabled="!selectedSkill.readme_url">
-                  {{ t('components.skill.actions.openRepo') }}
-                </button>
+                <template v-if="selectedSkill.installed">
+                  <div class="agent-chips">
+                    <span class="agent-chip" :class="{ active: selectedSkill.agents?.claude }">C</span>
+                    <span class="agent-chip" :class="{ active: selectedSkill.agents?.codex }">X</span>
+                  </div>
+                  <button
+                    class="btn-primary"
+                    :disabled="togglingSkill === selectedSkill.directory || isConflictSkill(selectedSkill)"
+                    @click="handleToggle(selectedSkill, !selectedSkill.enabled)"
+                  >
+                    {{ selectedSkill.enabled ? t('components.skill.actions.disableDropdown') : t('components.skill.actions.enableDropdown') }}
+                  </button>
+                  <div class="split-btn-group">
+                    <button
+                      class="btn-secondary split-main"
+                      :disabled="processingSkill === uninstallProcessingKey(selectedSkill)"
+                      @click="handleUninstall(selectedSkill)"
+                    >
+                      {{ t('components.skill.actions.uninstall') }}
+                    </button>
+                    <button
+                      class="btn-secondary split-caret"
+                      :disabled="processingSkill === uninstallProcessingKey(selectedSkill)"
+                      @click.stop="uninstallDropdownOpen = !uninstallDropdownOpen"
+                      aria-label="uninstall options"
+                    >▾</button>
+                    <div v-if="uninstallDropdownOpen" class="split-dropdown">
+                      <button type="button" @click="handleUninstallAgent(selectedSkill, 'claude')">{{ t('components.skill.actions.uninstallClaude') }}</button>
+                      <button type="button" @click="handleUninstallAgent(selectedSkill, 'codex')">{{ t('components.skill.actions.uninstallCodex') }}</button>
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="split-btn-group">
+                    <button
+                      class="btn-primary split-main"
+                      :disabled="isInstallingSkill(selectedSkill) || !canInstallSkill(selectedSkill)"
+                      @click="handleInstall(selectedSkill, [])"
+                    >
+                      {{ isInstallingSkill(selectedSkill) ? t('components.skill.install.installing') : t('components.skill.actions.installAll') }}
+                    </button>
+                    <button
+                      class="btn-primary split-caret"
+                      :disabled="isInstallingSkill(selectedSkill) || !canInstallSkill(selectedSkill)"
+                      @click.stop="installDropdownOpen = !installDropdownOpen"
+                      aria-label="install options"
+                    >▾</button>
+                    <div v-if="installDropdownOpen" class="split-dropdown">
+                      <button type="button" @click="handleInstall(selectedSkill, ['claude'])">{{ t('components.skill.actions.installClaude') }}</button>
+                      <button type="button" @click="handleInstall(selectedSkill, ['codex'])">{{ t('components.skill.actions.installCodex') }}</button>
+                    </div>
+                  </div>
+                </template>
               </div>
             </header>
 
-            <div class="detail-grid">
-              <div class="detail-main">
-                <nav class="detail-tabs">
-                  <button :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">
-                    {{ t('components.skill.tabs.overview') }}
-                  </button>
-                  <button :class="{ active: activeTab === 'content' }" @click="activeTab = 'content'">
-                    {{ t('components.skill.tabs.content') }}
-                  </button>
-                  <button :class="{ active: activeTab === 'status' }" @click="activeTab = 'status'">
-                    {{ t('components.skill.tabs.status') }}
-                  </button>
-                </nav>
+            <nav class="detail-tabs">
+              <button :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">
+                {{ t('components.skill.tabs.overview') }}
+              </button>
+              <button :class="{ active: activeTab === 'content' }" @click="activeTab = 'content'">
+                {{ t('components.skill.tabs.content') }}
+              </button>
+              <button :class="{ active: activeTab === 'status' }" @click="activeTab = 'status'">
+                {{ t('components.skill.tabs.status') }}
+              </button>
+            </nav>
 
-                <div v-if="activeTab === 'overview'" class="detail-panel">
+            <div v-if="activeTab === 'overview'" class="detail-layout-vscode">
+              <section class="detail-content-pane">
+                <section class="detail-block install">
+                  <div class="detail-block-label">INSTALLATION</div>
+                  <div class="install-command-row">
+                    <code class="install-command">{{ installCommand || selectedSkill.directory }}</code>
+                    <button
+                      class="tool-icon compact"
+                      type="button"
+                      :data-tooltip="copyTooltip"
+                      :disabled="!installCommand"
+                      @click="copyInstallCommand"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 9.75A2.25 2.25 0 0111.25 7.5h6A2.25 2.25 0 0119.5 9.75v6A2.25 2.25 0 0117.25 18h-6A2.25 2.25 0 019 15.75v-6z" fill="none" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M5.25 15V8.25A2.25 2.25 0 017.5 6h6.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="detail-block">
+                  <div class="detail-block-label">SKILL.MD</div>
                   <pre class="detail-prose">{{ selectedOverview }}</pre>
-                </div>
+                </section>
+              </section>
 
-                <div v-else-if="activeTab === 'content'" class="detail-panel">
-                  <div v-if="selectedSkill.installed" class="editor-shell">
-                    <div class="editor-toolbar">
-                      <span>{{ t('components.skill.tabs.contentHelp') }}</span>
-                      <button class="btn-secondary" :disabled="!contentDirty || savingContent" @click="saveSelectedContent">
-                        {{ savingContent ? t('common.saving') : t('common.save') }}
-                      </button>
-                    </div>
-                    <textarea v-model="skillContentDraft" class="skill-editor" spellcheck="false"></textarea>
-                  </div>
-                  <div v-else class="detail-placeholder">
-                    {{ t('components.skill.detail.availableContentPlaceholder') }}
-                  </div>
-                </div>
-
-                <div v-else class="detail-panel">
-                  <div class="detail-status-grid">
-                    <article class="mini-status-card">
-                      <h3>{{ t('components.skill.status.claudeLink') }}</h3>
-                      <p>{{ formatLinkStatus(linkStatus?.claude.status) }}</p>
-                      <small>{{ linkStatus?.claude.target || diagnostics.claude_link_path }}</small>
-                    </article>
-                    <article class="mini-status-card">
-                      <h3>{{ t('components.skill.status.codexLink') }}</h3>
-                      <p>{{ formatLinkStatus(linkStatus?.codex.status) }}</p>
-                      <small>{{ linkStatus?.codex.target || diagnostics.codex_link_path }}</small>
-                    </article>
-                  </div>
-
-                  <div class="timeline-block">
-                    <h3>{{ t('components.skill.summary.migrations') }}</h3>
-                    <div v-if="relatedMigrationRecords.length" class="timeline-list">
-                      <article v-for="record in relatedMigrationRecords" :key="recordKey(record)" class="timeline-item">
-                        <div class="timeline-item-head">
-                          <strong>{{ record.directory || record.platform || t('components.skill.summary.unknownRecord') }}</strong>
-                          <span class="row-badge" :class="badgeClassForMigration(record.status)">{{ formatMigrationStatus(record.status) }}</span>
-                        </div>
-                        <p>{{ record.message || t('components.skill.summary.noMessage') }}</p>
-                        <small>{{ formatDate(record.created_at) }}</small>
-                      </article>
-                    </div>
-                    <div v-else class="detail-placeholder">
-                      {{ t('components.skill.summary.noMigrations') }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <aside class="detail-side">
-                <section class="info-card">
-                  <h3>{{ t('components.skill.info.installation') }}</h3>
-                  <dl>
+              <aside class="detail-sidebar-vscode">
+                <section class="side-panel">
+                  <h3>Installation</h3>
+                  <dl class="side-facts">
                     <div>
                       <dt>{{ t('components.skill.info.directory') }}</dt>
                       <dd>{{ selectedSkill.directory }}</dd>
                     </div>
                     <div>
-                      <dt>{{ t('components.skill.info.source') }}</dt>
-                      <dd>{{ selectedSourceLabel }}</dd>
-                    </div>
-                    <div>
                       <dt>{{ t('components.skill.info.branch') }}</dt>
                       <dd>{{ selectedSkill.repo_branch || 'main' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{{ selectedSkill.installed ? (selectedSkill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled')) : t('components.skill.groups.recommended') }}</dd>
                     </div>
                   </dl>
                 </section>
 
-                <section class="info-card">
-                  <h3>{{ t('components.skill.info.links') }}</h3>
-                  <div class="link-health-list">
-                    <button class="side-link" type="button" @click="openPlatformLink('claude')">
-                      <span>Claude</span>
-                      <strong :class="statusClass(linkStatus?.claude.status)">{{ formatLinkStatus(linkStatus?.claude.status) }}</strong>
-                    </button>
-                    <button class="side-link" type="button" @click="openPlatformLink('codex')">
-                      <span>Codex</span>
-                      <strong :class="statusClass(linkStatus?.codex.status)">{{ formatLinkStatus(linkStatus?.codex.status) }}</strong>
-                    </button>
-                  </div>
+                <section class="side-panel">
+                  <h3>Repository</h3>
+                  <p class="side-panel-value">{{ selectedSourceLabel }}</p>
+                  <p v-if="selectedSkill.readme_url" class="side-panel-subtle">{{ selectedSkill.readme_url }}</p>
                 </section>
 
-                <section class="info-card">
-                  <h3>{{ t('components.skill.info.resources') }}</h3>
-                  <div class="resource-list">
-                    <button class="btn-secondary" @click="handleOpenFolder">
-                      {{ t('components.skill.actions.openFolder') }}
+                <section class="side-panel">
+                  <h3>Resources</h3>
+                  <div class="side-icon-links">
+                    <button class="side-icon-link" type="button" @click="selectedSkill.installed ? openSelectedFolder() : handleOpenFolder()">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                      {{ selectedSkill.installed ? t('components.skill.actions.openSkillFolder') : t('components.skill.actions.openFolder') }}
                     </button>
-                    <button class="btn-secondary" @click="openSkillRepo(selectedSkill)" :disabled="!selectedSkill.readme_url">
+                    <button class="side-icon-link" type="button" :disabled="!selectedSkill.readme_url" @click="openSkillRepo(selectedSkill)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z" fill="currentColor"/></svg>
                       {{ t('components.skill.actions.openRepo') }}
                     </button>
-                    <button class="btn-secondary" @click="backupModalOpen = true">
+                    <button class="side-icon-link" type="button" @click="backupModalOpen = true">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.25 8.25h13.5M8.25 12h7.5m-9 3.75h10.5A2.25 2.25 0 0019.5 13.5v-6A2.25 2.25 0 0017.25 5.25H6.75A2.25 2.25 0 004.5 7.5v6a2.25 2.25 0 002.25 2.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                       {{ t('components.skill.actions.viewBackups') }}
                     </button>
                   </div>
                 </section>
               </aside>
+            </div>
+
+            <div v-else-if="activeTab === 'content'" class="detail-panel">
+              <div v-if="selectedSkill.installed" class="editor-shell">
+                <div class="editor-toolbar">
+                  <span>{{ t('components.skill.tabs.contentHelp') }}</span>
+                  <button class="btn-secondary" :disabled="!contentDirty || savingContent" @click="saveSelectedContent">
+                    {{ savingContent ? t('common.saving') : t('common.save') }}
+                  </button>
+                </div>
+                <textarea v-model="skillContentDraft" class="skill-editor" spellcheck="false"></textarea>
+              </div>
+              <div v-else class="detail-placeholder">
+                {{ t('components.skill.detail.availableContentPlaceholder') }}
+              </div>
+            </div>
+
+            <div v-else class="detail-panel">
+              <div class="timeline-block">
+                <h3>{{ t('components.skill.summary.migrations') }}</h3>
+                <div v-if="relatedMigrationRecords.length" class="timeline-list">
+                  <article v-for="record in relatedMigrationRecords" :key="recordKey(record)" class="timeline-item">
+                    <div class="timeline-item-head">
+                      <strong>{{ record.directory || record.platform || t('components.skill.summary.unknownRecord') }}</strong>
+                      <span class="row-badge" :class="badgeClassForMigration(record.status)">{{ formatMigrationStatus(record.status) }}</span>
+                    </div>
+                    <p>{{ record.message || t('components.skill.summary.noMessage') }}</p>
+                    <small>{{ formatDate(record.created_at) }}</small>
+                  </article>
+                </div>
+                <div v-else class="detail-placeholder">
+                  {{ t('components.skill.summary.noMigrations') }}
+                </div>
+              </div>
             </div>
           </template>
         </section>
@@ -591,6 +517,8 @@ const repoModalOpen = ref(false)
 const backupModalOpen = ref(false)
 const conflictModalOpen = ref(false)
 const pendingUninstallSkill = ref<SkillSummary | null>(null)
+const installDropdownOpen = ref(false)
+const uninstallDropdownOpen = ref(false)
 
 const collapsed = reactive({
   installed: false,
@@ -604,7 +532,6 @@ const installedGroups = computed(() => groupedSkills.value.installed ?? [])
 const availableGroups = computed(() => groupedSkills.value.available ?? [])
 const installedCount = computed(() => installedGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
 const availableCount = computed(() => availableGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
-
 const conflictDirectories = computed(() => {
   const directories = new Set<string>()
   for (const record of diagnostics.value.migrations ?? []) {
@@ -663,6 +590,15 @@ const selectedOverview = computed(() => {
   ].filter(Boolean).join('\n')
 })
 
+const installCommand = computed(() => {
+  if (!selectedSkill.value?.repo_owner || !selectedSkill.value?.repo_name) return ''
+  return `npx skills add https://github.com/${selectedSkill.value.repo_owner}/${selectedSkill.value.repo_name} --skill ${selectedSkill.value.directory}`
+})
+
+const copyTooltip = computed(() =>
+  notice.value === installCommand.value && installCommand.value ? 'Copied' : 'Copy install command'
+)
+
 const relatedMigrationRecords = computed(() => {
   if (!selectedSkill.value) return diagnostics.value.migrations.slice(0, 10)
   return diagnostics.value.migrations
@@ -687,12 +623,34 @@ const lastMigrationLabel = computed(() => {
   return record ? formatMigrationStatus(record.status) : t('components.skill.summary.none')
 })
 
+const userSyncStatus = computed(() => {
+  if (!linkStatus.value) return 'neutral'
+  if (!linkStatus.value.user_skills_exists) return 'neutral'
+  if (conflictRecords.value.length) return 'danger'
+  return 'linked'
+})
+
 const filteredInstalledGroups = computed(() => filterGroups(installedGroups.value, true))
 const filteredAvailableGroups = computed(() => filterGroups(availableGroups.value, false))
 const filteredInstalledCount = computed(() => filteredInstalledGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
 const filteredAvailableCount = computed(() => filteredAvailableGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
 
 const filterLabel = computed(() => t(`components.skill.search.filters.${filterMode.value}`))
+
+const syncNodeClass = (status?: string) => {
+  if (status === 'linked') return 'is-linked'
+  if (status === 'missing' || status === 'danger') return 'is-danger'
+  return 'is-neutral'
+}
+
+const syncTooltip = (label: string, path: string, status?: string) => {
+  const state = status === 'linked'
+    ? t('components.skill.status.linked')
+    : status === 'missing' || status === 'danger'
+      ? t('components.skill.status.missing')
+      : t('components.skill.status.notDetected')
+  return [label, state, path].filter(Boolean).join(' · ')
+}
 
 watch(selectedSkill, async (skill) => {
   activeTab.value = 'overview'
@@ -882,7 +840,8 @@ const handleRepairLinks = async () => {
   }
 }
 
-const handleInstall = async (skill: SkillSummary) => {
+const handleInstall = async (skill: SkillSummary, agents: string[] = []) => {
+  installDropdownOpen.value = false
   selectSkill(skill)
   if (!hasHealthyLinks.value) {
     skillsError.value = t('components.skill.install.linksRequired')
@@ -891,7 +850,7 @@ const handleInstall = async (skill: SkillSummary) => {
   }
   processingSkill.value = installProcessingKey(skill)
   try {
-    await installSkill(skill.directory, skill.repo_owner ?? '', skill.repo_name ?? '', skill.repo_branch ?? '')
+    await installSkill(skill.directory, skill.repo_owner ?? '', skill.repo_name ?? '', skill.repo_branch ?? '', agents)
     skillsError.value = ''
     notice.value = t('components.skill.install.success', { name: skill.name })
     await Promise.all([loadGroupedSkills(), loadStatus()])
@@ -904,9 +863,27 @@ const handleInstall = async (skill: SkillSummary) => {
 }
 
 const handleUninstall = async (skill: SkillSummary) => {
+  uninstallDropdownOpen.value = false
   openSkillMenuKey.value = ''
   selectSkill(skill)
   pendingUninstallSkill.value = skill
+}
+
+const handleUninstallAgent = async (skill: SkillSummary, agent: string) => {
+  uninstallDropdownOpen.value = false
+  selectSkill(skill)
+  processingSkill.value = uninstallProcessingKey(skill)
+  try {
+    await uninstallSkill(skill.directory, [agent])
+    skillsError.value = ''
+    notice.value = t('components.skill.actions.uninstallSuccess', { name: skill.name })
+    await Promise.all([loadGroupedSkills(), loadStatus()])
+  } catch (error) {
+    console.error('failed to uninstall skill for agent', error)
+    skillsError.value = t('components.skill.actions.uninstallError', { name: skill.name })
+  } finally {
+    processingSkill.value = ''
+  }
 }
 
 const closeUninstallModal = () => {
@@ -964,6 +941,12 @@ const openSkillRepo = (skill: SkillSummary) => {
 const openSelectedFolder = async () => {
   if (!selectedSkill.value?.installed) return
   await openInstalledFolder(selectedSkill.value)
+}
+
+const copyInstallCommand = async () => {
+  if (!installCommand.value) return
+  await navigator.clipboard.writeText(installCommand.value)
+  notice.value = 'Copied install command'
 }
 
 const openInstalledFolder = async (skill: SkillSummary) => {
@@ -1135,196 +1118,178 @@ onMounted(() => {
 .skill-workspace {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   color: var(--mac-text);
 }
 
-.skill-hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px 28px;
-  border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at top left, rgba(10, 132, 255, 0.18), transparent 32%),
-    radial-gradient(circle at right center, rgba(16, 185, 129, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
-    color-mix(in srgb, var(--mac-surface) 88%, transparent);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.14);
+.skill-header {
+  display: block;
+  padding: 0 2px;
 }
 
-.skill-hero h1 {
-  margin: 0;
-  font-size: clamp(1.8rem, 2.5vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-.skill-hero-copy {
-  margin: 8px 0 0;
-  max-width: 720px;
-  line-height: 1.6;
+.micro-label {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   color: var(--mac-text-secondary);
 }
 
-.skill-hero-meta {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
+.skill-header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
 }
 
-.hero-chip {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mac-surface) 80%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.status-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.status-card,
-.migration-summary,
+.sync-strip,
 .skill-sidebar,
 .skill-detail {
   border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
   background: color-mix(in srgb, var(--mac-surface) 90%, transparent);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
-.status-card {
-  padding: 16px 18px;
-  border-radius: 18px;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease;
-}
-
-.status-card:hover {
-  transform: translateY(-1px);
-}
-
-.status-card.linked,
-.status-pill.linked,
-.side-link strong.linked {
-  color: #22c55e;
-}
-
-.status-card.missing,
-.status-pill.missing,
-.side-link strong.missing {
-  color: #f59e0b;
-}
-
-.status-card.danger,
-.status-pill.danger,
-.side-link strong.danger {
-  color: #ef4444;
-}
-
-.status-card.neutral,
-.status-pill.neutral,
-.side-link strong.neutral {
-  color: #9ca3af;
-}
-
-.status-card-head {
+.sync-strip {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
   align-items: center;
-}
-
-.status-card-head h2,
-.migration-summary-main h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.status-pill {
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.status-path,
-.status-meta {
-  margin: 8px 0 0;
-  line-height: 1.45;
-}
-
-.status-path {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-  font-size: 0.75rem;
-  color: var(--mac-text);
-}
-
-.status-meta {
-  font-size: 0.82rem;
-  color: var(--mac-text-secondary);
-}
-
-.migration-summary {
-  border-radius: 20px;
-  padding: 18px 20px;
-}
-
-.migration-summary-main {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.summary-label {
-  margin: 0 0 6px;
-  color: var(--mac-text-secondary);
-  font-size: 0.74rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.summary-actions {
-  display: flex;
-  gap: 8px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
   flex-wrap: wrap;
 }
 
-.migration-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 16px;
+.sync-node-shell {
+  position: relative;
 }
 
-.summary-metric {
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--mac-surface-strong) 86%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
+.sync-node {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 58%, transparent);
+  background: color-mix(in srgb, var(--mac-surface-strong) 72%, transparent);
+  color: inherit;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
-.summary-metric span {
-  display: block;
-  font-size: 0.74rem;
+.sync-node:hover {
+  transform: translateY(-1px);
+}
+
+.sync-node-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--mac-text-secondary) 12%, transparent);
+}
+
+.sync-node-label {
+  font-size: 0.72rem;
   color: var(--mac-text-secondary);
-  margin-bottom: 6px;
 }
 
-.summary-metric strong {
-  font-size: 0.95rem;
+.sync-node.is-linked {
+  border-color: color-mix(in srgb, #22c55e 42%, var(--mac-border));
+  background: color-mix(in srgb, #22c55e 12%, var(--mac-surface));
+  color: #22c55e;
 }
 
-.summary-metric.danger strong {
+.sync-node.is-danger {
+  border-color: color-mix(in srgb, #ef4444 42%, var(--mac-border));
+  background: color-mix(in srgb, #ef4444 12%, var(--mac-surface));
   color: #ef4444;
+}
+
+.sync-node.is-neutral {
+  color: var(--mac-text-secondary);
+}
+
+.sync-node[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.sync-node[data-tooltip]:hover::after,
+.sync-node[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.sync-node-corner {
+  position: relative;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
+  color: var(--mac-text-secondary);
+  z-index: 1;
+}
+
+.sync-node-corner svg {
+  width: 12px;
+  height: 12px;
+}
+
+.sync-node-corner:disabled {
+  opacity: 0.55;
+}
+
+.sync-node-corner[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.sync-node-corner[data-tooltip]:hover::after,
+.sync-node-corner[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
 }
 
 .skill-banner {
@@ -1346,34 +1311,27 @@ onMounted(() => {
 
 .skill-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(330px, 390px) minmax(0, 1fr);
+  gap: 18px;
   min-height: 740px;
 }
 
 .skill-sidebar,
 .skill-detail {
-  border-radius: 22px;
+  border-radius: 26px;
   overflow: hidden;
 }
 
 .sidebar-header {
-  padding: 18px;
+  padding: 20px 20px 18px;
   border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  background: color-mix(in srgb, var(--mac-surface-strong) 88%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mac-surface-strong) 92%, transparent), color-mix(in srgb, var(--mac-surface) 86%, transparent));
 }
 
-.sidebar-title-row {
+.sidebar-tools-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sidebar-title-row h2 {
-  margin: 0;
-  font-size: 0.92rem;
-  letter-spacing: 0.08em;
+  justify-content: flex-end;
 }
 
 .sidebar-tools {
@@ -1428,10 +1386,10 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin-top: 14px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--mac-surface) 86%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
+  padding: 12px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--mac-surface) 78%, transparent);
+  border: 1px solid color-mix(in srgb, #9ec0ff 14%, var(--mac-border));
 }
 
 .search-shell svg {
@@ -1463,9 +1421,11 @@ onMounted(() => {
 }
 
 .sidebar-body {
-  padding: 14px;
+  padding: 16px;
   max-height: 980px;
   overflow: auto;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mac-surface) 92%, transparent), color-mix(in srgb, var(--mac-surface-strong) 74%, transparent));
 }
 
 .skill-group-panel + .skill-group-panel {
@@ -1485,11 +1445,12 @@ onMounted(() => {
 }
 
 .group-toggle {
-  padding: 12px 10px;
-  border-radius: 12px;
-  font-size: 0.82rem;
+  padding: 12px 12px;
+  border-radius: 14px;
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .group-toggle:hover,
@@ -1514,10 +1475,10 @@ onMounted(() => {
 
 .subgroup-panel {
   margin-top: 8px;
-  padding: 8px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--mac-surface) 68%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mac-border) 58%, transparent);
+  padding: 10px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mac-surface) 74%, transparent), color-mix(in srgb, var(--mac-surface-strong) 68%, transparent));
+  border: 1px solid color-mix(in srgb, var(--mac-border) 52%, transparent);
 }
 
 .subgroup-panel.recommended {
@@ -1572,31 +1533,30 @@ onMounted(() => {
 }
 
 .detail-header {
-  padding: 24px;
+  padding: 24px 24px 18px;
   border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
   background:
-    radial-gradient(circle at top right, rgba(10, 132, 255, 0.12), transparent 26%),
-    color-mix(in srgb, var(--mac-surface-strong) 90%, transparent);
+    linear-gradient(180deg, rgba(12, 22, 40, 0.92), rgba(14, 22, 34, 0.92));
 }
 
 .detail-header-main {
   display: flex;
-  gap: 18px;
-  align-items: flex-start;
+  gap: 16px;
+  align-items: center;
 }
 
 .detail-icon {
-  width: 74px;
-  height: 74px;
-  border-radius: 22px;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
+  font-size: 1.7rem;
   font-weight: 800;
   background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.32), transparent 55%),
-    linear-gradient(145deg, rgba(10, 132, 255, 0.28), rgba(16, 185, 129, 0.24));
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 55%),
+    linear-gradient(145deg, rgba(10, 132, 255, 0.26), rgba(16, 185, 129, 0.22));
 }
 
 .detail-icon.conflict {
@@ -1609,61 +1569,68 @@ onMounted(() => {
   min-width: 0;
 }
 
-.detail-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.detail-title-row h2 {
-  margin: 0;
-  font-size: clamp(1.6rem, 2vw, 2rem);
-}
-
-.detail-source,
-.detail-directory {
-  margin: 6px 0 0;
+.detail-publisher {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   color: var(--mac-text-secondary);
 }
 
-.detail-directory {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-  font-size: 0.8rem;
+.detail-copy h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2vw, 1.95rem);
+  letter-spacing: -0.03em;
 }
 
-.detail-description {
-  margin: 12px 0 0;
-  line-height: 1.6;
+.detail-tagline {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.detail-subline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--mac-text-secondary);
+}
+
+.detail-subline span {
+  position: relative;
+}
+
+.detail-subline span:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--mac-text-secondary);
+  transform: translateY(-50%);
 }
 
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 18px;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 18px;
-  padding: 18px;
-}
-
-.detail-main,
-.detail-side {
-  min-width: 0;
+  margin-top: 16px;
 }
 
 .detail-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  padding: 0 24px;
+  margin: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
 }
 
 .detail-tabs button {
-  padding: 10px 14px;
+  padding: 12px 2px;
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
@@ -1672,22 +1639,66 @@ onMounted(() => {
 
 .detail-tabs button.active {
   color: var(--mac-text);
-  background: color-mix(in srgb, var(--mac-surface-strong) 82%, transparent);
-  border-color: color-mix(in srgb, var(--mac-border) 68%, transparent);
+  border-bottom: 2px solid var(--mac-accent);
 }
 
 .detail-panel,
-.info-card,
-.mini-status-card,
 .timeline-item {
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
   background: color-mix(in srgb, var(--mac-surface) 88%, transparent);
 }
 
 .detail-panel {
-  padding: 16px;
+  margin: 20px 24px 24px;
+  padding: 18px;
   min-height: 440px;
+}
+
+.detail-layout-vscode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 28px;
+  padding: 24px;
+}
+
+.detail-content-pane,
+.detail-sidebar-vscode {
+  min-width: 0;
+}
+
+.detail-content-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-sidebar-vscode {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.detail-block,
+.side-panel {
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
+}
+
+.detail-block-label,
+.side-panel h3 {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mac-text-secondary);
+}
+
+.install-command-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .detail-prose {
@@ -1697,6 +1708,54 @@ onMounted(() => {
   line-height: 1.65;
   color: var(--mac-text-secondary);
   font-family: inherit;
+}
+
+.side-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.side-facts dt {
+  font-size: 0.74rem;
+  color: var(--mac-text-secondary);
+  margin-bottom: 4px;
+}
+
+.side-facts dd {
+  margin: 0;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.side-panel-value {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.side-panel-subtle,
+.fact-link {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  color: var(--mac-text-secondary);
+}
+
+.side-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.side-link-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
 }
 
 .editor-shell {
@@ -1739,34 +1798,13 @@ onMounted(() => {
   color: var(--mac-text-secondary);
 }
 
-.detail-status-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.mini-status-card {
-  padding: 14px;
-}
-
-.mini-status-card h3,
-.timeline-block h3,
-.info-card h3 {
+.timeline-block h3 {
   margin: 0 0 8px;
   font-size: 0.92rem;
 }
 
-.mini-status-card p {
-  margin: 0 0 6px;
-  font-weight: 700;
-}
-
-.mini-status-card small {
-  color: var(--mac-text-secondary);
-}
-
 .timeline-block {
-  margin-top: 16px;
+  height: 100%;
 }
 
 .timeline-list {
@@ -1795,51 +1833,95 @@ onMounted(() => {
   color: var(--mac-text-secondary);
 }
 
-.detail-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.info-card {
-  padding: 16px;
-}
-
-.info-card dl {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.info-card dt {
-  font-size: 0.76rem;
-  color: var(--mac-text-secondary);
-}
-
-.info-card dd {
-  margin: 4px 0 0;
-  word-break: break-word;
-}
-
-.link-health-list,
-.resource-list,
+.resource-toolbar,
 .repo-item-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.side-link {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
+.resource-toolbar {
+  margin-top: 2px;
+}
+
+.tool-icon {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
   background: color-mix(in srgb, var(--mac-surface-strong) 82%, transparent);
-  color: inherit;
+  color: var(--mac-text);
+}
+
+.tool-icon.compact {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.tool-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tool-icon:disabled {
+  opacity: 0.45;
+}
+
+.tool-icon[data-tooltip] {
+  position: relative;
+}
+
+.tool-icon[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.tool-icon[data-tooltip]:hover::after,
+.tool-icon[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.tool-status-dot {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #9ca3af;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mac-surface) 88%, transparent);
+}
+
+.tool-status-dot.linked {
+  background: #22c55e;
+}
+
+.tool-status-dot.missing {
+  background: #f59e0b;
+}
+
+.tool-status-dot.danger {
+  background: #ef4444;
 }
 
 .btn-primary,
@@ -1978,10 +2060,119 @@ onMounted(() => {
   }
 }
 
+.split-btn-group {
+  position: relative;
+  display: inline-flex;
+}
+
+.split-btn-group .split-main {
+  border-radius: 10px 0 0 10px;
+  border-right: none;
+}
+
+.split-btn-group .split-caret {
+  border-radius: 0 10px 10px 0;
+  padding: 10px 10px;
+  font-size: 0.72rem;
+}
+
+.split-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 170px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
+  background: color-mix(in srgb, var(--mac-surface) 96%, transparent);
+  box-shadow: 0 20px 36px rgba(0, 0, 0, 0.22);
+}
+
+.split-dropdown button {
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.split-dropdown button:hover {
+  background: color-mix(in srgb, var(--mac-surface-strong) 78%, transparent);
+}
+
+.agent-chips {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.agent-chip {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 58%, transparent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--mac-text-secondary);
+  background: color-mix(in srgb, var(--mac-surface-strong) 72%, transparent);
+}
+
+.agent-chip.active {
+  color: #22c55e;
+  border-color: color-mix(in srgb, #22c55e 48%, transparent);
+  background: color-mix(in srgb, #22c55e 12%, var(--mac-surface));
+}
+
+.side-icon-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.side-icon-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--mac-accent);
+  text-align: left;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.side-icon-link:disabled {
+  color: var(--mac-text-secondary);
+  cursor: default;
+}
+
+.side-icon-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.side-icon-link svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.global-menu-popover {
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+}
+
 @media (max-width: 1180px) {
-  .status-strip,
-  .migration-summary-grid,
-  .detail-grid {
+  .detail-layout-vscode {
     grid-template-columns: 1fr;
   }
 
@@ -1995,20 +2186,29 @@ onMounted(() => {
 }
 
 @media (max-width: 720px) {
-  .skill-hero,
-  .migration-summary-main,
+  .skill-header,
   .detail-header-main {
     flex-direction: column;
   }
 
-  .detail-actions,
-  .summary-actions {
+  .sync-strip {
+    flex-wrap: wrap;
+  }
+
+  .detail-actions {
     width: 100%;
   }
 
   .btn-primary,
   .btn-secondary {
     width: 100%;
+  }
+
+  .detail-tabs,
+  .detail-layout-vscode,
+  .detail-panel {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 </style>

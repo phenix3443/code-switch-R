@@ -18,9 +18,10 @@
       <div class="skill-row-head">
         <h3 class="skill-row-name">{{ skill.name }}</h3>
         <div class="skill-row-badges">
-          <span v-if="skill.installed" class="row-badge enabled" :class="{ off: !skill.enabled }">
-            {{ skill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled') }}
-          </span>
+          <template v-if="skill.installed">
+            <span class="row-badge agent-chip" :class="{ active: skill.agents?.claude }">C</span>
+            <span class="row-badge agent-chip" :class="{ active: skill.agents?.codex }">X</span>
+          </template>
           <span v-if="conflict" class="row-badge conflict">
             {{ t('components.skill.badges.conflict') }}
           </span>
@@ -105,13 +106,13 @@ const sourceLabel = computed(() => {
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
+  padding: 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 34%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
   color: inherit;
   text-align: left;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .hitbox-reset {
@@ -125,13 +126,15 @@ const sourceLabel = computed(() => {
 }
 
 .skill-row:hover {
-  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
-  border-color: color-mix(in srgb, var(--mac-border) 70%, transparent);
+  background: color-mix(in srgb, var(--mac-surface) 92%, transparent);
+  border-color: color-mix(in srgb, var(--mac-border) 82%, transparent);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 .skill-row.selected {
-  background: color-mix(in srgb, var(--mac-accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--mac-accent) 36%, var(--mac-border));
+  background: color-mix(in srgb, var(--mac-accent) 10%, var(--mac-surface));
+  border-color: color-mix(in srgb, var(--mac-accent) 46%, var(--mac-border));
+  box-shadow: 0 10px 22px rgba(10, 132, 255, 0.08);
 }
 
 .skill-row.conflict {
@@ -145,19 +148,14 @@ const sourceLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.28), transparent 55%),
-    linear-gradient(145deg, rgba(10, 132, 255, 0.28), rgba(16, 185, 129, 0.22));
-  border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
+  background: color-mix(in srgb, var(--mac-accent) 12%, var(--mac-surface-strong));
+  border: 1px solid color-mix(in srgb, var(--mac-border) 56%, transparent);
   color: var(--mac-text);
   font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 .skill-row-icon.conflict {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), transparent 55%),
-    linear-gradient(145deg, rgba(239, 68, 68, 0.34), rgba(245, 158, 11, 0.26));
+  background: color-mix(in srgb, #ef4444 14%, var(--mac-surface-strong));
 }
 
 .skill-row-main {
@@ -174,7 +172,7 @@ const sourceLabel = computed(() => {
 
 .skill-row-name {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   font-weight: 700;
   line-height: 1.25;
   overflow: hidden;
@@ -190,11 +188,10 @@ const sourceLabel = computed(() => {
 }
 
 .row-badge {
-  padding: 2px 7px;
+  padding: 3px 7px;
   border-radius: 999px;
   font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 .row-badge.enabled {
@@ -212,6 +209,18 @@ const sourceLabel = computed(() => {
   background: color-mix(in srgb, #ef4444 18%, transparent);
 }
 
+.row-badge.agent-chip {
+  color: var(--mac-text-secondary);
+  background: color-mix(in srgb, var(--mac-border) 30%, transparent);
+  font-size: 0.64rem;
+  padding: 2px 5px;
+}
+
+.row-badge.agent-chip.active {
+  color: var(--mac-accent);
+  background: color-mix(in srgb, var(--mac-accent) 16%, transparent);
+}
+
 .skill-row-desc,
 .skill-row-source {
   margin: 2px 0 0;
@@ -226,8 +235,8 @@ const sourceLabel = computed(() => {
 }
 
 .skill-row-source {
-  font-size: 0.74rem;
-  color: color-mix(in srgb, var(--mac-text-secondary) 82%, transparent);
+  font-size: 0.72rem;
+  color: var(--mac-text-secondary);
 }
 
 .skill-row-actions {
@@ -237,14 +246,14 @@ const sourceLabel = computed(() => {
 }
 
 .row-install-btn {
-  min-width: 66px;
-  height: 30px;
+  min-width: 72px;
+  height: 32px;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--mac-accent) 24%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--mac-accent) 88%, white 8%);
+  border: 1px solid color-mix(in srgb, var(--mac-accent) 20%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mac-accent) 84%, white 10%);
   color: white;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
