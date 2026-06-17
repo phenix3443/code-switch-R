@@ -44,7 +44,7 @@ export function GetNetworkSettings(): $CancellablePromise<$models.NetworkSetting
 /**
  * GetWSLConfigStatus 获取 WSL 配置状态
  */
-export function GetWSLConfigStatus(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: boolean } }> {
+export function GetWSLConfigStatus(): $CancellablePromise<{ [_: string]: { [_: string]: boolean } }> {
     return $Call.ByID(1329108980).then(($result: any) => {
         return $$createType4($result);
     });

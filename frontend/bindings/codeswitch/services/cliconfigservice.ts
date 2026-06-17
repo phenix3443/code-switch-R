@@ -68,7 +68,7 @@ export function RestoreDefault(platform: string): $CancellablePromise<void> {
 /**
  * SaveConfig 保存 CLI 配置
  */
-export function SaveConfig(platform: string, editable: { [_ in string]?: any }): $CancellablePromise<void> {
+export function SaveConfig(platform: string, editable: { [_: string]: any }): $CancellablePromise<void> {
     return $Call.ByID(3461150403, platform, editable);
 }
 
@@ -83,7 +83,7 @@ export function SaveConfigFileContent(platform: string, filePath: string, conten
 /**
  * SetTemplate 设置指定平台的全局模板
  */
-export function SetTemplate(platform: string, template: { [_ in string]?: any }, isGlobalDefault: boolean): $CancellablePromise<void> {
+export function SetTemplate(platform: string, template: { [_: string]: any }, isGlobalDefault: boolean): $CancellablePromise<void> {
     return $Call.ByID(768927510, platform, template, isGlobalDefault);
 }
 

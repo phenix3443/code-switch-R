@@ -1935,6 +1935,7 @@ export class ManualTestResult {
 export class NetworkSettings {
     "listenMode": ListenMode;
     "customAddress"?: string;
+    "relayPort"?: number;
     "currentAddress"?: string;
     "wslAutoConfig": boolean;
     "targetCli": TargetCli;
@@ -1958,10 +1959,10 @@ export class NetworkSettings {
      * Creates a new NetworkSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): NetworkSettings {
-        const $$createField4_0 = $$createType21;
+        const $$createField5_0 = $$createType21;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("targetCli" in $$parsedSource) {
-            $$parsedSource["targetCli"] = $$createField4_0($$parsedSource["targetCli"]);
+            $$parsedSource["targetCli"] = $$createField5_0($$parsedSource["targetCli"]);
         }
         return new NetworkSettings($$parsedSource as Partial<NetworkSettings>);
     }
@@ -2579,6 +2580,55 @@ export class Skill {
     }
 }
 
+export class SkillDiagnostics {
+    "user_skills_path": string;
+    "backup_root": string;
+    "claude_link_path": string;
+    "codex_link_path": string;
+    "backups": backupRecord[];
+    "migrations": migrationRecord[];
+
+    /** Creates a new SkillDiagnostics instance. */
+    constructor($$source: Partial<SkillDiagnostics> = {}) {
+        if (!("user_skills_path" in $$source)) {
+            this["user_skills_path"] = "";
+        }
+        if (!("backup_root" in $$source)) {
+            this["backup_root"] = "";
+        }
+        if (!("claude_link_path" in $$source)) {
+            this["claude_link_path"] = "";
+        }
+        if (!("codex_link_path" in $$source)) {
+            this["codex_link_path"] = "";
+        }
+        if (!("backups" in $$source)) {
+            this["backups"] = [];
+        }
+        if (!("migrations" in $$source)) {
+            this["migrations"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillDiagnostics instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillDiagnostics {
+        const $$createField4_0 = $$createType26;
+        const $$createField5_0 = $$createType28;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("backups" in $$parsedSource) {
+            $$parsedSource["backups"] = $$createField4_0($$parsedSource["backups"]);
+        }
+        if ("migrations" in $$parsedSource) {
+            $$parsedSource["migrations"] = $$createField5_0($$parsedSource["migrations"]);
+        }
+        return new SkillDiagnostics($$parsedSource as Partial<SkillDiagnostics>);
+    }
+}
+
 export class SkillGroup {
     "group_key": string;
     "group_label": string;
@@ -2603,7 +2653,7 @@ export class SkillGroup {
      * Creates a new SkillGroup instance from a string or object.
      */
     static createFrom($$source: any = {}): SkillGroup {
-        const $$createField2_0 = $$createType26;
+        const $$createField2_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("skills" in $$parsedSource) {
             $$parsedSource["skills"] = $$createField2_0($$parsedSource["skills"]);
@@ -2667,8 +2717,8 @@ export class SkillLinkStatus {
      * Creates a new SkillLinkStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): SkillLinkStatus {
-        const $$createField2_0 = $$createType27;
-        const $$createField3_0 = $$createType27;
+        const $$createField2_0 = $$createType31;
+        const $$createField3_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("claude" in $$parsedSource) {
             $$parsedSource["claude"] = $$createField2_0($$parsedSource["claude"]);
@@ -2890,6 +2940,48 @@ export class WSLDetection {
     }
 }
 
+export class backupRecord {
+    "platform"?: string;
+    "path"?: string;
+    "created_at"?: time$0.Time;
+
+    /** Creates a new backupRecord instance. */
+    constructor($$source: Partial<backupRecord> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new backupRecord instance from a string or object.
+     */
+    static createFrom($$source: any = {}): backupRecord {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new backupRecord($$parsedSource as Partial<backupRecord>);
+    }
+}
+
+export class migrationRecord {
+    "platform"?: string;
+    "directory"?: string;
+    "status"?: string;
+    "message"?: string;
+    "created_at"?: time$0.Time;
+
+    /** Creates a new migrationRecord instance. */
+    constructor($$source: Partial<migrationRecord> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new migrationRecord instance from a string or object.
+     */
+    static createFrom($$source: any = {}): migrationRecord {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new migrationRecord($$parsedSource as Partial<migrationRecord>);
+    }
+}
+
 export class skillRepoConfig {
     "owner": string;
     "name": string;
@@ -2949,6 +3041,10 @@ const $$createType21 = TargetCli.createFrom;
 const $$createType22 = $Create.Map($Create.Any, $Create.Any);
 const $$createType23 = AvailabilityConfig.createFrom;
 const $$createType24 = $Create.Nullable($$createType23);
-const $$createType25 = Skill.createFrom;
+const $$createType25 = backupRecord.createFrom;
 const $$createType26 = $Create.Array($$createType25);
-const $$createType27 = SkillLinkEntry.createFrom;
+const $$createType27 = migrationRecord.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = Skill.createFrom;
+const $$createType30 = $Create.Array($$createType29);
+const $$createType31 = SkillLinkEntry.createFrom;

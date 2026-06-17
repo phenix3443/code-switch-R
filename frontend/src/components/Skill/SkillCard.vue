@@ -1,6 +1,5 @@
 <template>
-  <button
-    type="button"
+  <div
     :class="[
       'skill-row',
       {
@@ -10,13 +9,12 @@
         recommended: !skill.installed
       }
     ]"
-    @click="$emit('select', skill)"
   >
     <div class="skill-row-icon" :class="{ installed: skill.installed, conflict }">
       <span>{{ avatar }}</span>
     </div>
 
-    <div class="skill-row-main">
+    <button type="button" class="skill-row-main hitbox-reset" @click="$emit('select', skill)">
       <div class="skill-row-head">
         <h3 class="skill-row-name">{{ skill.name }}</h3>
         <div class="skill-row-badges">
@@ -30,7 +28,7 @@
       </div>
       <p class="skill-row-desc">{{ skill.description || t('components.skill.list.noDescription') }}</p>
       <p class="skill-row-source">{{ sourceLabel }}</p>
-    </div>
+    </button>
 
     <div class="skill-row-actions">
       <button
@@ -56,7 +54,7 @@
         </svg>
       </button>
     </div>
-  </button>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -116,6 +114,16 @@ const sourceLabel = computed(() => {
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
+.hitbox-reset {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+}
+
 .skill-row:hover {
   background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
   border-color: color-mix(in srgb, var(--mac-border) 70%, transparent);
@@ -154,6 +162,7 @@ const sourceLabel = computed(() => {
 
 .skill-row-main {
   min-width: 0;
+  width: 100%;
 }
 
 .skill-row-head {

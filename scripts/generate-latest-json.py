@@ -115,7 +115,7 @@ def main():
 
     # 读取 release notes（如果存在）
     notes = ""
-    release_notes_file = Path("RELEASE_NOTES.md")
+    release_notes_file = Path("doc/releases/RELEASE_NOTES.md")
     if release_notes_file.exists():
         content = release_notes_file.read_text(encoding="utf-8")
         # 提取当前版本的 notes

@@ -26,9 +26,18 @@ export function GetSkillContent(directory: string): $CancellablePromise<string> 
     return $Call.ByID(3743777913, directory);
 }
 
+/**
+ * GetSkillDiagnostics 返回 links/migrations/backups 的只读诊断数据。
+ */
+export function GetSkillDiagnostics(): $CancellablePromise<$models.SkillDiagnostics> {
+    return $Call.ByID(428181056).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
 export function GetSkillLinkStatus(): $CancellablePromise<$models.SkillLinkStatus> {
     return $Call.ByID(2399943974).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -44,7 +53,7 @@ export function InstallSkill(directory: string, repoOwner: string, repoName: str
  */
 export function ListAvailableSkills(): $CancellablePromise<$models.Skill[]> {
     return $Call.ByID(2360640006).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -53,7 +62,7 @@ export function ListAvailableSkills(): $CancellablePromise<$models.Skill[]> {
  */
 export function ListGroupedSkills(): $CancellablePromise<$models.GroupedSkills> {
     return $Call.ByID(3230213139).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -62,7 +71,7 @@ export function ListGroupedSkills(): $CancellablePromise<$models.GroupedSkills> 
  */
 export function ListInstalledSkills(): $CancellablePromise<$models.Skill[]> {
     return $Call.ByID(3887832687).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -77,8 +86,29 @@ export function ListRepos(): $CancellablePromise<$models.skillRepoConfig[]> {
  */
 export function ListSkills(): $CancellablePromise<$models.Skill[]> {
     return $Call.ByID(3387382203).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
+}
+
+/**
+ * OpenInstalledSkillFolder 打开已安装技能目录
+ */
+export function OpenInstalledSkillFolder(directory: string): $CancellablePromise<void> {
+    return $Call.ByID(141351006, directory);
+}
+
+/**
+ * OpenPlatformSkillsLink 打开平台 skills 入口；若链接不存在，则打开父目录。
+ */
+export function OpenPlatformSkillsLink(platform: string): $CancellablePromise<void> {
+    return $Call.ByID(3203879100, platform);
+}
+
+/**
+ * OpenSkillBackup 打开备份目录
+ */
+export function OpenSkillBackup(path: string): $CancellablePromise<void> {
+    return $Call.ByID(2518967140, path);
 }
 
 /**
@@ -102,6 +132,20 @@ export function SaveSkillContent(directory: string, content: string): $Cancellab
 }
 
 /**
+ * Start 兼容旧调用方，实际 Wails v3 生命周期入口见 ServiceStartup。
+ */
+export function Start(): $CancellablePromise<void> {
+    return $Call.ByID(3921147663);
+}
+
+/**
+ * Stop 兼容旧调用方。
+ */
+export function Stop(): $CancellablePromise<void> {
+    return $Call.ByID(37757141);
+}
+
+/**
  * ToggleSkill 切换技能的启用状态
  * 通过修改 SKILL.md 的 disable-model-invocation 字段实现
  */
@@ -116,7 +160,8 @@ export function UninstallSkill(directory: string): $CancellablePromise<void> {
 // Private type creation functions
 const $$createType0 = $models.skillRepoConfig.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $models.SkillLinkStatus.createFrom;
-const $$createType3 = $models.Skill.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $models.GroupedSkills.createFrom;
+const $$createType2 = $models.SkillDiagnostics.createFrom;
+const $$createType3 = $models.SkillLinkStatus.createFrom;
+const $$createType4 = $models.Skill.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $models.GroupedSkills.createFrom;

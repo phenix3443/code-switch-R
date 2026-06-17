@@ -17,7 +17,7 @@ import * as $models from "./models.js";
 /**
  * GetAllResults 获取所有平台的测试结果
  */
-export function GetAllResults(): $CancellablePromise<{ [_ in string]?: $models.ConnectivityResult[] }> {
+export function GetAllResults(): $CancellablePromise<{ [_: string]: $models.ConnectivityResult[] }> {
     return $Call.ByID(3449037820).then(($result: any) => {
         return $$createType2($result);
     });

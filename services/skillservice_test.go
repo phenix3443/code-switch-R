@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,7 +108,7 @@ func TestSkillPathHelpers(t *testing.T) {
 	home := t.TempDir()
 	setTestHomeDir(t, home)
 
-	if got := getUserSkillsPath(); got != filepath.Join(home, ".agent", "skills") {
+	if got := getUserSkillsPath(); got != filepath.Join(home, ".agents", "skills") {
 		t.Fatalf("getUserSkillsPath() = %q", got)
 	}
 	if got := getPlatformSkillsLinkPath(skillPlatformClaude); got != filepath.Join(home, ".claude", "skills") {
@@ -177,6 +178,47 @@ func TestInstallSkillBlocksConflictingDirectoryOwnership(t *testing.T) {
 	}
 }
 
+func TestInstallSkillAllowsFreshGitHubDirectoryWithoutExistingProvenance(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	store := newDefaultSkillStore()
+	store.Repos = []skillRepoConfig{
+		{Owner: "owner", Name: "repo", Branch: "main", Enabled: true},
+	}
+	if err := ss.saveStoreLocked(store); err != nil {
+		t.Fatalf("预写 store 失败: %v", err)
+	}
+
+	var gotArgs []string
+	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
+		gotArgs = append([]string(nil), args...)
+		createSkillFixture(t, filepath.Join(getUserSkillsPath(), "fresh-skill"), "fresh-skill", "Fresh Skill", "demo desc", "")
+		return []byte("ok"), nil
+	}
+
+	if err := ss.InstallSkill("fresh-skill", "owner", "repo", "main"); err != nil {
+		t.Fatalf("期望新目录可以正常安装，得到错误: %v", err)
+	}
+
+	expectedArgs := []string{"add", "owner/repo", "--skill", "fresh-skill", "--global", "--agent", "claude-code", "--agent", "codex", "-y"}
+	if strings.Join(gotArgs, " ") != strings.Join(expectedArgs, " ") {
+		t.Fatalf("skills add 参数不符合预期，得到 %#v", gotArgs)
+	}
+
+	assertSkillDirExists(t, filepath.Join(getUserSkillsPath(), "fresh-skill"))
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	provenance := store.Provenance["fresh-skill"]
+	if provenance.Type != "github" || provenance.RepoOwner != "owner" || provenance.RepoName != "repo" || provenance.RepoBranch != "main" {
+		t.Fatalf("期望写入 github provenance，得到 %#v", provenance)
+	}
+}
+
 func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
 	home := t.TempDir()
 	setTestHomeDir(t, home)
@@ -197,8 +239,19 @@ func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
 		t.Fatalf("预写 store 失败: %v", err)
 	}
 
+	var gotArgs []string
+	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
+		gotArgs = append([]string(nil), args...)
+		return []byte("ok"), nil
+	}
+
 	if err := ss.UninstallSkill("demo-skill"); err != nil {
 		t.Fatalf("UninstallSkill() 失败: %v", err)
+	}
+
+	expectedArgs := []string{"remove", "demo-skill", "--global", "--agent", "claude-code", "--agent", "codex", "-y"}
+	if strings.Join(gotArgs, " ") != strings.Join(expectedArgs, " ") {
+		t.Fatalf("skills remove 参数不符合预期，得到 %#v", gotArgs)
 	}
 
 	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {

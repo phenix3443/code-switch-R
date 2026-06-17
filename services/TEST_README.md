@@ -6,7 +6,13 @@
 services/
 ├── providerservice_test.go    # 核心算法单元测试（~350行）
 ├── providerrelay_test.go      # 请求处理与端到端测试（~250行）
+├── skill_integration_test.go  # skills 服务级集成测试
+├── testhelpers/
+│   └── env.go                 # HOME 隔离、测试文件辅助
 └── testdata/
+    └── skills/
+        └── demo-skill/
+            └── SKILL.md       # skills 集成测试样例
     └── example-claude-config.json  # 测试配置示例
 ```
 
@@ -37,6 +43,9 @@ go test ./services/... -run TestProvider_IsModelSupported -v
 
 # 测试端到端场景
 go test ./services/... -run TestModelMappingEndToEnd -v
+
+# 测试 skills 模块完整集成流
+go test ./services/... -run TestSkillModuleIntegrationFlow -v
 ```
 
 ### 运行性能测试
@@ -55,6 +64,74 @@ go test ./services/... -cover
 ```bash
 go test ./services/... -coverprofile=coverage.out
 go tool cover -html=coverage.out
+```
+
+## 🧩 Skills 统一目录重构测试
+
+### 运行 skills 相关测试
+```bash
+# 运行所有 skills 测试
+go test ./services/... -run 'TestSkill|TestSkillLinks' -v
+
+# 仅验证软链接/迁移/备份逻辑
+go test ./services/... -run TestSkillLinks -v
+
+# 验证启动时自动执行 links 检查
+go test ./services/... -run TestSkillServiceServiceStartup -v
+```
+
+### skills 覆盖重点
+
+#### skillservice_test.go
+- ✅ 旧 `skill.json` 状态迁移到 `Provenance`
+- ✅ 统一目录 `~/.agents/skills` 的安装 / 卸载 / 内容读写
+- ✅ 目录来源冲突阻断
+- ✅ `ToggleSkill` 将 override 投影回 `SKILL.md`
+- ✅ installed / available skills 的来源分组
+
+#### skilllinks_test.go
+- ✅ clean state 下自动创建 Claude/Codex 链接
+- ✅ 从原始平台目录迁移到 `~/.agents/skills`
+- ✅ 同名不同内容冲突记录
+- ✅ 双平台重复内容去重
+- ✅ 备份记录生成
+- ✅ `EnsureSkillLinks()` reconcile `EnabledOverrides`
+- ✅ `SkillService.ServiceStartup()` 启动时自动执行 links 检查，冲突不阻断启动
+
+#### skill_integration_test.go
+- ✅ 隔离 HOME 下跑完整 startup / repair / migrate / install / toggle / content / uninstall 流
+- ✅ 验证 repo snapshot 安装链路与 diagnostics 输出
+- ✅ 验证统一目录与 Claude/Codex link 状态
+
+## 🧪 前端测试基建
+
+前端新增 `Vitest` 基础配置，当前先覆盖 `frontend/src/services/skill.ts` 的调用层 smoke tests：
+
+```bash
+cd frontend
+npm test
+```
+
+## 🖥️ 隔离测试实例
+
+如果需要启动一个不污染本地 `~/.code-switch` 的测试版 app，可以直接使用仓库根目录下的命令：
+
+```bash
+make test-app
+```
+
+默认行为：
+
+- 使用隔离 HOME：`./.tmp/test-home`
+- 使用独立 relay 端口：`18110`
+- 使用独立前端 dev 端口：`9255`
+- 测试实例配置文件写入：`./.tmp/test-home/.code-switch/network.json`
+- 默认复用当前机器的 `GOPATH`，避免把 Go module cache 写进测试 HOME 导致清理失败
+
+可选环境变量：
+
+```bash
+CODE_SWITCH_TEST_HOME=/tmp/code-switch-test-home CODE_SWITCH_TEST_PORT=18120 WAILS_VITE_PORT=9265 make test-app
 ```
 
 ## 🎯 测试覆盖范围
@@ -254,7 +331,6 @@ BenchmarkReplaceModelInRequestBody-8     500000   3000 ns/op  512 B/op    5 allo
 ## 🎓 下一步
 
 测试通过后，建议：
-1. 📝 更新 CLAUDE.md 文档
-2. 🎨 开发前端 UI 组件
-3. 🔧 创建用户配置示例
-4. 🚀 在实际环境中测试降级功能
+1. 📝 同步 skills 统一目录相关文档
+2. 🧪 在 Windows 环境补充 junction/权限链路验证
+3. 🚀 在实际用户目录上验证首次迁移与备份流程

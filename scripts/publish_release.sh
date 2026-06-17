@@ -12,7 +12,7 @@ if [ $# -lt 1 ]; then
 fi
 
 TAG="$1"
-NOTES="${2:-RELEASE_NOTES.md}"
+NOTES="${2:-doc/releases/RELEASE_NOTES.md}"
 
 if [ ! -f "$NOTES" ]; then
   echo "Release notes file '$NOTES' not found" >&2

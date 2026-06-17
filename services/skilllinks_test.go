@@ -1,10 +1,13 @@
 package services
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 func TestSkillLinksCleanState(t *testing.T) {
@@ -225,6 +228,46 @@ func TestBackupPlatformDirCopiesOriginalContent(t *testing.T) {
 	}
 	if len(store.Backups) != 1 {
 		t.Fatalf("期望写入一个备份记录，得到 %#v", store.Backups)
+	}
+}
+
+func TestSkillServiceServiceStartupEnsuresLinksOnStartup(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	ss := NewSkillService()
+	if err := ss.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
+		t.Fatalf("ServiceStartup() 返回错误: %v", err)
+	}
+
+	status := ss.GetSkillLinkStatus()
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+}
+
+func TestSkillServiceServiceStartupDoesNotBlockOnMigrationConflict(t *testing.T) {
+	home := t.TempDir()
+	setTestHomeDir(t, home)
+
+	createTestSkill(t, getUserSkillsPath(), "shared", "Shared", "user version")
+	createTestSkill(t, getPlatformSkillsLinkPath(skillPlatformClaude), "shared", "Shared", "claude version")
+
+	ss := NewSkillService()
+	if err := ss.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
+		t.Fatalf("期望启动阶段冲突不阻断应用，得到错误: %v", err)
+	}
+
+	status := ss.GetSkillLinkStatus()
+	if status.Claude.Status != skillLinkStatusConflict {
+		t.Fatalf("期望冲突状态被保留给 UI，得到 %#v", status.Claude)
+	}
+
+	store, err := ss.loadStore()
+	if err != nil {
+		t.Fatalf("loadStore() 失败: %v", err)
+	}
+	if !hasMigrationStatus(store.Migrations, skillPlatformClaude, "shared", skillMigrationStatusConflict) {
+		t.Fatalf("期望启动后仍记录 conflict migration，得到 %#v", store.Migrations)
 	}
 }
 

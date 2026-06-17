@@ -9,3 +9,4 @@ temp.txt
 /test_*.exe
 /updater.exe
 scripts/*.db
+.tmp/

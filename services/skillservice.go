@@ -2,6 +2,7 @@ package services
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,12 +11,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"gopkg.in/yaml.v3"
 )
 
@@ -130,12 +133,15 @@ type skillRepoConfig struct {
 	Enabled bool   `json:"enabled"`
 }
 
+type skillsCommandRunner func(ctx context.Context, args ...string) ([]byte, error)
+
 type SkillService struct {
-	httpClient     *http.Client
-	storePath      string
-	installDir     string
+	httpClient      *http.Client
+	storePath       string
+	installDir      string
+	skillsRunner    skillsCommandRunner
 	repoSnapshotter func(skillRepoConfig) (string, string, func(), error)
-	mu             sync.Mutex
+	mu              sync.Mutex
 }
 
 func NewSkillService() *SkillService {
@@ -147,8 +153,32 @@ func NewSkillService() *SkillService {
 		httpClient:      &http.Client{Timeout: 60 * time.Second},
 		storePath:       filepath.Join(home, skillStoreDir, skillStoreFile),
 		installDir:      getUserSkillsPath(),
+		skillsRunner:    runSkillsCLI,
 		repoSnapshotter: nil,
 	}
+}
+
+// Start 兼容旧调用方，实际 Wails v3 生命周期入口见 ServiceStartup。
+func (ss *SkillService) Start() error {
+	if err := ss.EnsureSkillLinks(); err != nil {
+		log.Printf("skill links startup check failed: %v", err)
+	}
+	return nil
+}
+
+// Stop 兼容旧调用方。
+func (ss *SkillService) Stop() error {
+	return nil
+}
+
+// ServiceStartup Wails v3 生命周期方法：启动时执行一次 skills 链接修复/迁移检查。
+func (ss *SkillService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	return ss.Start()
+}
+
+// ServiceShutdown Wails v3 生命周期方法。
+func (ss *SkillService) ServiceShutdown() error {
+	return ss.Stop()
 }
 
 func getUserSkillsPath() string {
@@ -156,7 +186,7 @@ func getUserSkillsPath() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".agent", "skills")
+	return filepath.Join(home, ".agents", "skills")
 }
 
 func getPlatformSkillsLinkPath(platform string) string {
@@ -373,18 +403,6 @@ func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch 
 
 	var lastErr error
 	for _, repo := range repos {
-		repoDir, _, cleanup, err := ss.prepareRepoSnapshot(repo)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		skillPath := filepath.Join(repoDir, directory)
-		info, err := os.Stat(skillPath)
-		if err != nil || !info.IsDir() {
-			cleanup()
-			lastErr = fmt.Errorf("仓库 %s/%s 中未找到 %s", repo.Owner, repo.Name, directory)
-			continue
-		}
 		provenance := skillProvenance{
 			Type:       "github",
 			RepoOwner:  repo.Owner,
@@ -394,12 +412,25 @@ func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch 
 		if repoBranch != "" {
 			provenance.RepoBranch = repoBranch
 		}
-		if err := ss.installFromPathWithProvenance(directory, skillPath, provenance); err != nil {
-			cleanup()
+		if isProvenanceConflict(store.Provenance[directory], provenance) {
+			return fmt.Errorf("skill %s 目录名已被其他来源占用", directory)
+		}
+		if err := ss.installViaSkillsCLI(directory, repo, repoBranch); err != nil {
 			lastErr = err
 			continue
 		}
-		cleanup()
+		ss.mu.Lock()
+		latestStore, err := ss.loadStoreLocked()
+		if err != nil {
+			ss.mu.Unlock()
+			return err
+		}
+		latestStore.Provenance[directory] = normalizeSkillProvenance(provenance)
+		err = ss.saveStoreLocked(latestStore)
+		ss.mu.Unlock()
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 	if lastErr == nil {
@@ -452,6 +483,9 @@ func (ss *SkillService) UninstallSkill(directory string) error {
 	if directory == "" {
 		return errors.New("skill directory 不能为空")
 	}
+	if err := ss.uninstallViaSkillsCLI(directory); err != nil {
+		return err
+	}
 	target := filepath.Join(ss.installDir, directory)
 	if err := os.RemoveAll(target); err != nil && !os.IsNotExist(err) {
 		return err
@@ -469,6 +503,50 @@ func (ss *SkillService) UninstallSkill(directory string) error {
 	delete(store.Provenance, directory)
 	delete(store.EnabledOverrides, directory)
 	return ss.saveStoreLocked(store)
+}
+
+func (ss *SkillService) installViaSkillsCLI(directory string, repo skillRepoConfig, repoBranch string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	source := buildSkillsCLISource(repo, repoBranch)
+	args := []string{
+		"add",
+		source,
+		"--skill", directory,
+		"--global",
+		"--agent", "claude-code",
+		"--agent", "codex",
+		"-y",
+	}
+	output, err := ss.skillsRunner(ctx, args...)
+	if err != nil {
+		return fmt.Errorf("skills add 失败: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+
+	if _, statErr := os.Stat(filepath.Join(ss.installDir, directory, "SKILL.md")); statErr != nil {
+		return fmt.Errorf("skills add 后未找到已安装 skill %s: %w", directory, statErr)
+	}
+	return nil
+}
+
+func (ss *SkillService) uninstallViaSkillsCLI(directory string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	args := []string{
+		"remove",
+		directory,
+		"--global",
+		"--agent", "claude-code",
+		"--agent", "codex",
+		"-y",
+	}
+	output, err := ss.skillsRunner(ctx, args...)
+	if err != nil {
+		return fmt.Errorf("skills remove 失败: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
 }
 
 // ToggleSkill 切换技能的启用状态
@@ -900,11 +978,14 @@ func normalizeSkillProvenance(provenance skillProvenance) skillProvenance {
 }
 
 func isProvenanceConflict(existing, incoming skillProvenance) bool {
-	existing = normalizeSkillProvenance(existing)
-	incoming = normalizeSkillProvenance(incoming)
-	if existing.Type == "" {
+	if strings.TrimSpace(existing.Type) == "" &&
+		strings.TrimSpace(existing.RepoOwner) == "" &&
+		strings.TrimSpace(existing.RepoName) == "" &&
+		strings.TrimSpace(existing.RepoBranch) == "" {
 		return false
 	}
+	existing = normalizeSkillProvenance(existing)
+	incoming = normalizeSkillProvenance(incoming)
 	if existing.Type != incoming.Type {
 		return true
 	}
@@ -1045,6 +1126,23 @@ func buildBranchCandidates(preferred string) []string {
 		ordered = append(ordered, branch)
 	}
 	return ordered
+}
+
+func buildSkillsCLISource(repo skillRepoConfig, overrideBranch string) string {
+	branch := strings.TrimSpace(overrideBranch)
+	if branch == "" {
+		branch = strings.TrimSpace(repo.Branch)
+	}
+	if branch == "" || strings.EqualFold(branch, "main") {
+		return fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
+	}
+	return fmt.Sprintf("https://github.com/%s/%s/tree/%s", repo.Owner, repo.Name, branch)
+}
+
+func runSkillsCLI(ctx context.Context, args ...string) ([]byte, error) {
+	cmdArgs := append([]string{"--yes", "skills"}, args...)
+	cmd := exec.CommandContext(ctx, "npx", cmdArgs...)
+	return cmd.CombinedOutput()
 }
 
 func (ss *SkillService) downloadFile(rawURL, dest string) error {

@@ -490,6 +490,32 @@
         </article>
       </div>
     </BaseModal>
+
+    <BaseModal
+      :open="Boolean(pendingUninstallSkill)"
+      :title="t('components.skill.actions.uninstall')"
+      variant="confirm"
+      @close="closeUninstallModal"
+    >
+      <div class="modal-list">
+        <p class="repo-modal-copy">
+          {{ t('components.skill.actions.confirmUninstall', { name: pendingUninstallSkill?.name || '' }) }}
+        </p>
+        <div class="confirm-actions">
+          <button class="btn-secondary" type="button" @click="closeUninstallModal">
+            {{ t('common.cancel') }}
+          </button>
+          <button
+            class="btn-secondary danger"
+            type="button"
+            :disabled="!pendingUninstallSkill || processingSkill === uninstallProcessingKey(pendingUninstallSkill)"
+            @click="confirmUninstall"
+          >
+            {{ t('components.skill.actions.uninstall') }}
+          </button>
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>
 
@@ -564,6 +590,7 @@ const savingContent = ref(false)
 const repoModalOpen = ref(false)
 const backupModalOpen = ref(false)
 const conflictModalOpen = ref(false)
+const pendingUninstallSkill = ref<SkillSummary | null>(null)
 
 const collapsed = reactive({
   installed: false,
@@ -879,7 +906,16 @@ const handleInstall = async (skill: SkillSummary) => {
 const handleUninstall = async (skill: SkillSummary) => {
   openSkillMenuKey.value = ''
   selectSkill(skill)
-  if (!window.confirm(t('components.skill.actions.confirmUninstall', { name: skill.name }))) {
+  pendingUninstallSkill.value = skill
+}
+
+const closeUninstallModal = () => {
+  pendingUninstallSkill.value = null
+}
+
+const confirmUninstall = async () => {
+  const skill = pendingUninstallSkill.value
+  if (!skill) {
     return
   }
   processingSkill.value = uninstallProcessingKey(skill)
@@ -893,6 +929,7 @@ const handleUninstall = async (skill: SkillSummary) => {
     skillsError.value = t('components.skill.actions.uninstallError', { name: skill.name })
   } finally {
     processingSkill.value = ''
+    pendingUninstallSkill.value = null
   }
 }
 
@@ -1876,6 +1913,12 @@ onMounted(() => {
   margin: 0;
   color: var(--mac-text-secondary);
   line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .repo-form {
