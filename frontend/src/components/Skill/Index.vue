@@ -166,8 +166,12 @@
                   <div class="detail-meta-row">
                     <span class="detail-publisher">{{ selectedSourceLabel }}</span>
                     <span class="detail-stat-sep">|</span>
-                    <span class="detail-stat">⬇ —</span>
-                    <span class="detail-stat">★★★★☆ (—)</span>
+                    <span class="detail-stat">
+                      <svg class="stat-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v9M4.5 6.5L8 10l3.5-3.5M2 13h12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      —
+                    </span>
+                    <span class="detail-stat-sep">|</span>
+                    <span class="detail-stat detail-stars">★★★★☆ (—)</span>
                   </div>
                   <p class="detail-tagline">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
                   <div class="detail-actions">
@@ -176,16 +180,28 @@
                       :class="{ installed: selectedSkill.agents?.claude }"
                       :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
                       @click="selectedSkill.agents?.claude ? handleUninstallAgent(selectedSkill, 'claude') : handleInstall(selectedSkill, ['claude'])"
-                    >Claude</button>
+                    >
+                      <svg class="btn-agent-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M13.82 3.26a1.94 1.94 0 00-3.64 0L3.25 19.27a1 1 0 00.94 1.38h15.62a1 1 0 00.94-1.38L13.82 3.26z" fill="#E87040"/>
+                      </svg>
+                      Claude
+                    </button>
                     <button
                       class="agent-install-btn"
                       :class="{ installed: selectedSkill.agents?.codex }"
                       :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
                       @click="selectedSkill.agents?.codex ? handleUninstallAgent(selectedSkill, 'codex') : handleInstall(selectedSkill, ['codex'])"
-                    >Codex</button>
-                    <button class="agent-install-btn" disabled :title="t('components.skill.actions.autoUpdateComingSoon')">
-                      {{ t('components.skill.actions.autoUpdate') }}
+                    >
+                      <svg class="btn-agent-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" fill="none" stroke="#10A37F" stroke-width="1.6"/>
+                        <path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13.5 7l-3 10" fill="none" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                      Codex
                     </button>
+                    <label class="auto-update-label" :title="t('components.skill.actions.autoUpdateComingSoon')">
+                      <input type="checkbox" class="auto-update-check" disabled />
+                      {{ t('components.skill.actions.autoUpdate') }}
+                    </label>
                     <button
                       v-if="selectedSkill.installed"
                       class="btn-secondary"
@@ -1425,13 +1441,14 @@ onMounted(() => {
 }
 
 .detail-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
+  width: 100px;
+  height: 100px;
+  border-radius: 22px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.7rem;
+  font-size: 2.2rem;
   font-weight: 800;
   background:
     radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 55%),
@@ -1476,7 +1493,20 @@ onMounted(() => {
 }
 
 .detail-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--mac-text-secondary);
+}
+
+.stat-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.detail-stars {
+  color: #e9a12c;
 }
 
 .detail-tagline {
@@ -1978,7 +2008,10 @@ onMounted(() => {
 
 .agent-install-btn {
   height: 32px;
-  padding: 0 16px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 6px;
   border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
   background: transparent;
@@ -2008,6 +2041,33 @@ onMounted(() => {
 
 .agent-install-btn:disabled {
   opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-agent-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.auto-update-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mac-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+  user-select: none;
+}
+
+.auto-update-check {
+  accent-color: var(--mac-accent);
   cursor: not-allowed;
 }
 
