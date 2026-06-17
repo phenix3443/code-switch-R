@@ -176,27 +176,27 @@
                   <p class="detail-tagline">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
                   <div class="detail-actions">
                     <button
-                      class="agent-install-btn"
+                      class="agent-install-btn icon-only"
                       :class="{ installed: selectedSkill.agents?.claude }"
                       :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
+                      :title="selectedSkill.agents?.claude ? t('components.skill.actions.uninstallClaude') : 'Claude'"
                       @click="selectedSkill.agents?.claude ? handleUninstallAgent(selectedSkill, 'claude') : handleInstall(selectedSkill, ['claude'])"
                     >
                       <svg class="btn-agent-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M13.82 3.26a1.94 1.94 0 00-3.64 0L3.25 19.27a1 1 0 00.94 1.38h15.62a1 1 0 00.94-1.38L13.82 3.26z" fill="#E87040"/>
                       </svg>
-                      Claude
                     </button>
                     <button
-                      class="agent-install-btn"
+                      class="agent-install-btn icon-only"
                       :class="{ installed: selectedSkill.agents?.codex }"
                       :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
+                      :title="selectedSkill.agents?.codex ? t('components.skill.actions.uninstallCodex') : 'Codex'"
                       @click="selectedSkill.agents?.codex ? handleUninstallAgent(selectedSkill, 'codex') : handleInstall(selectedSkill, ['codex'])"
                     >
                       <svg class="btn-agent-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="12" cy="12" r="9" fill="none" stroke="#10A37F" stroke-width="1.6"/>
                         <path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13.5 7l-3 10" fill="none" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/>
                       </svg>
-                      Codex
                     </button>
                     <label class="auto-update-label" :title="t('components.skill.actions.autoUpdateComingSoon')">
                       <input type="checkbox" class="auto-update-check" disabled />
@@ -1513,14 +1513,14 @@ onMounted(() => {
 }
 
 .detail-icon {
-  width: 100px;
-  height: 100px;
-  border-radius: 22px;
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.2rem;
+  font-size: 1.9rem;
   font-weight: 800;
   background:
     radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 55%),
@@ -2117,9 +2117,15 @@ onMounted(() => {
 }
 
 .btn-agent-icon {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
+}
+
+.agent-install-btn.icon-only {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
 }
 
 .auto-update-label {
