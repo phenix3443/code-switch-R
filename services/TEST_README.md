@@ -124,12 +124,14 @@ make test-app
 
 - 使用隔离 HOME：`./.tmp/test-home`
 - 使用独立 relay 端口：`18110`
+- 使用独立前端 dev 端口：`9255`
 - 测试实例配置文件写入：`./.tmp/test-home/.code-switch/network.json`
+- 默认复用当前机器的 `GOPATH`，避免把 Go module cache 写进测试 HOME 导致清理失败
 
 可选环境变量：
 
 ```bash
-CODE_SWITCH_TEST_HOME=/tmp/code-switch-test-home CODE_SWITCH_TEST_PORT=18120 make test-app
+CODE_SWITCH_TEST_HOME=/tmp/code-switch-test-home CODE_SWITCH_TEST_PORT=18120 WAILS_VITE_PORT=9265 make test-app
 ```
 
 ## 🎯 测试覆盖范围
