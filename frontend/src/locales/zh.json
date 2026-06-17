@@ -877,6 +877,8 @@
         "uninstallDropdown": "卸载 ▾",
         "openSkillFolder": "打开技能目录",
         "openRepo": "打开仓库",
+        "autoUpdate": "自动更新",
+        "autoUpdateComingSoon": "自动更新功能即将推出",
         "confirmUninstall": "确认卸载 {name}？",
         "uninstallSuccess": "{name} 已卸载",
         "enableSuccess": "{name} 已启用",

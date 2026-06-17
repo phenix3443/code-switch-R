@@ -162,58 +162,42 @@
                   {{ detailAvatar }}
                 </div>
                 <div class="detail-copy">
-                  <p class="detail-publisher">{{ selectedSourceLabel }}</p>
                   <h2>{{ selectedSkill.name }}</h2>
+                  <div class="detail-meta-row">
+                    <span class="detail-publisher">{{ selectedSourceLabel }}</span>
+                    <span class="detail-stat-sep">|</span>
+                    <span class="detail-stat">⬇ —</span>
+                    <span class="detail-stat">★★★★☆ (—)</span>
+                  </div>
                   <p class="detail-tagline">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
-                  <div class="detail-subline">
-                    <span>{{ selectedSkill.directory }}</span>
-                    <span>{{ selectedSkill.repo_branch || 'main' }}</span>
-                    <span>{{ selectedSkill.installed ? (selectedSkill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled')) : t('components.skill.groups.recommended') }}</span>
+                  <div class="detail-actions">
+                    <button
+                      class="agent-install-btn"
+                      :class="{ installed: selectedSkill.agents?.claude }"
+                      :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
+                      @click="selectedSkill.agents?.claude ? handleUninstallAgent(selectedSkill, 'claude') : handleInstall(selectedSkill, ['claude'])"
+                    >Claude</button>
+                    <button
+                      class="agent-install-btn"
+                      :class="{ installed: selectedSkill.agents?.codex }"
+                      :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
+                      @click="selectedSkill.agents?.codex ? handleUninstallAgent(selectedSkill, 'codex') : handleInstall(selectedSkill, ['codex'])"
+                    >Codex</button>
+                    <button class="agent-install-btn" disabled :title="t('components.skill.actions.autoUpdateComingSoon')">
+                      {{ t('components.skill.actions.autoUpdate') }}
+                    </button>
+                    <button
+                      v-if="selectedSkill.installed"
+                      class="btn-secondary"
+                      :disabled="togglingSkill === selectedSkill.directory || isConflictSkill(selectedSkill)"
+                      @click="handleToggle(selectedSkill, !selectedSkill.enabled)"
+                    >{{ selectedSkill.enabled ? t('components.skill.actions.disable') : t('components.skill.actions.enable') }}</button>
                   </div>
                 </div>
               </div>
-
-              <div class="detail-actions">
-                <button
-                  class="agent-install-btn"
-                  :class="{ installed: selectedSkill.agents?.claude }"
-                  :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
-                  @click="selectedSkill.agents?.claude ? handleUninstallAgent(selectedSkill, 'claude') : handleInstall(selectedSkill, ['claude'])"
-                >
-                  Claude
-                </button>
-                <button
-                  class="agent-install-btn"
-                  :class="{ installed: selectedSkill.agents?.codex }"
-                  :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
-                  @click="selectedSkill.agents?.codex ? handleUninstallAgent(selectedSkill, 'codex') : handleInstall(selectedSkill, ['codex'])"
-                >
-                  Codex
-                </button>
-                <button
-                  v-if="selectedSkill.installed"
-                  class="btn-secondary"
-                  :disabled="togglingSkill === selectedSkill.directory || isConflictSkill(selectedSkill)"
-                  @click="handleToggle(selectedSkill, !selectedSkill.enabled)"
-                >
-                  {{ selectedSkill.enabled ? t('components.skill.actions.disableDropdown') : t('components.skill.actions.enableDropdown') }}
-                </button>
-              </div>
             </header>
 
-            <nav class="detail-tabs">
-              <button :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">
-                {{ t('components.skill.tabs.overview') }}
-              </button>
-              <button :class="{ active: activeTab === 'content' }" @click="activeTab = 'content'">
-                {{ t('components.skill.tabs.content') }}
-              </button>
-              <button :class="{ active: activeTab === 'status' }" @click="activeTab = 'status'">
-                {{ t('components.skill.tabs.status') }}
-              </button>
-            </nav>
-
-            <div v-if="activeTab === 'overview'" class="detail-layout-vscode">
+            <div class="detail-layout-vscode">
               <section class="detail-content-pane">
                 <section class="detail-block install">
                   <div class="detail-block-label">INSTALLATION</div>
@@ -283,40 +267,6 @@
                   </div>
                 </section>
               </aside>
-            </div>
-
-            <div v-else-if="activeTab === 'content'" class="detail-panel">
-              <div v-if="selectedSkill.installed" class="editor-shell">
-                <div class="editor-toolbar">
-                  <span>{{ t('components.skill.tabs.contentHelp') }}</span>
-                  <button class="btn-secondary" :disabled="!contentDirty || savingContent" @click="saveSelectedContent">
-                    {{ savingContent ? t('common.saving') : t('common.save') }}
-                  </button>
-                </div>
-                <textarea v-model="skillContentDraft" class="skill-editor" spellcheck="false"></textarea>
-              </div>
-              <div v-else class="detail-placeholder">
-                {{ t('components.skill.detail.availableContentPlaceholder') }}
-              </div>
-            </div>
-
-            <div v-else class="detail-panel">
-              <div class="timeline-block">
-                <h3>{{ t('components.skill.summary.migrations') }}</h3>
-                <div v-if="relatedMigrationRecords.length" class="timeline-list">
-                  <article v-for="record in relatedMigrationRecords" :key="recordKey(record)" class="timeline-item">
-                    <div class="timeline-item-head">
-                      <strong>{{ record.directory || record.platform || t('components.skill.summary.unknownRecord') }}</strong>
-                      <span class="row-badge" :class="badgeClassForMigration(record.status)">{{ formatMigrationStatus(record.status) }}</span>
-                    </div>
-                    <p>{{ record.message || t('components.skill.summary.noMessage') }}</p>
-                    <small>{{ formatDate(record.created_at) }}</small>
-                  </article>
-                </div>
-                <div v-else class="detail-placeholder">
-                  {{ t('components.skill.summary.noMigrations') }}
-                </div>
-              </div>
             </div>
           </template>
         </section>
@@ -450,7 +400,6 @@ import {
 } from '../../services/skill'
 
 type FilterMode = 'all' | 'enabled' | 'conflict'
-type DetailTab = 'overview' | 'content' | 'status'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -475,21 +424,15 @@ const processingSkill = ref('')
 const togglingSkill = ref('')
 const repoBusy = ref(false)
 const repairing = ref(false)
-const activeTab = ref<DetailTab>('overview')
 const selectedSkillKey = ref('')
 const searchQuery = ref('')
 const filterMode = ref<FilterMode>('all')
 const overflowMenuOpen = ref(false)
 const openSkillMenuKey = ref('')
-const skillContentDraft = ref('')
-const originalSkillContent = ref('')
-const savingContent = ref(false)
 const repoModalOpen = ref(false)
 const backupModalOpen = ref(false)
 const conflictModalOpen = ref(false)
 const pendingUninstallSkill = ref<SkillSummary | null>(null)
-const installDropdownOpen = ref(false)
-const uninstallDropdownOpen = ref(false)
 
 const collapsed = reactive({
   installed: false,
@@ -545,12 +488,12 @@ const selectedSourceLabel = computed(() => {
   return selectedSkill.value.source_group_label || t('components.skill.groups.unknownSource')
 })
 
-const contentDirty = computed(() => skillContentDraft.value !== originalSkillContent.value)
+const contentDirty = computed(() => false)
 
 const selectedOverview = computed(() => {
   if (!selectedSkill.value) return ''
-  if (selectedSkill.value.installed && originalSkillContent.value) {
-    return extractSkillBody(originalSkillContent.value) || selectedSkill.value.description || t('components.skill.list.noDescription')
+  if (selectedSkill.value.installed) {
+    return selectedSkill.value.description || t('components.skill.list.noDescription')
   }
   return [
     selectedSkill.value.description || t('components.skill.list.noDescription'),
@@ -624,23 +567,8 @@ const syncTooltip = (label: string, path: string, status?: string) => {
 }
 
 watch(selectedSkill, async (skill) => {
-  activeTab.value = 'overview'
   openSkillMenuKey.value = ''
-  if (!skill?.installed) {
-    originalSkillContent.value = ''
-    skillContentDraft.value = ''
-    return
-  }
-
-  try {
-    const content = await getSkillContent(skill.directory)
-    originalSkillContent.value = content
-    skillContentDraft.value = content
-  } catch (error) {
-    console.error('failed to load skill content', error)
-    originalSkillContent.value = t('components.skill.actions.loadFailed')
-    skillContentDraft.value = originalSkillContent.value
-  }
+  if (!skill?.installed) return
 }, { immediate: true })
 
 const skillIdentity = (skill: SkillSummary) =>
@@ -812,11 +740,9 @@ const handleRepairLinks = async () => {
 }
 
 const handleInstall = async (skill: SkillSummary, agents: string[] = []) => {
-  installDropdownOpen.value = false
   selectSkill(skill)
   if (!hasHealthyLinks.value) {
     skillsError.value = t('components.skill.install.linksRequired')
-    activeTab.value = 'status'
     return
   }
   processingSkill.value = installProcessingKey(skill)
@@ -834,14 +760,12 @@ const handleInstall = async (skill: SkillSummary, agents: string[] = []) => {
 }
 
 const handleUninstall = async (skill: SkillSummary) => {
-  uninstallDropdownOpen.value = false
   openSkillMenuKey.value = ''
   selectSkill(skill)
   pendingUninstallSkill.value = skill
 }
 
 const handleUninstallAgent = async (skill: SkillSummary, agent: string) => {
-  uninstallDropdownOpen.value = false
   selectSkill(skill)
   processingSkill.value = uninstallProcessingKey(skill)
   try {
@@ -925,22 +849,6 @@ const openInstalledFolder = async (skill: SkillSummary) => {
     await openInstalledSkillFolder(skill.directory)
   } catch (error) {
     console.error('failed to open installed skill folder', error)
-  }
-}
-
-const saveSelectedContent = async () => {
-  if (!selectedSkill.value?.installed || !contentDirty.value) return
-  savingContent.value = true
-  try {
-    await saveSkillContent(selectedSkill.value.directory, skillContentDraft.value)
-    originalSkillContent.value = skillContentDraft.value
-    notice.value = t('components.skill.actions.saveSuccess')
-    await loadGroupedSkills()
-  } catch (error) {
-    console.error('failed to save skill content', error)
-    skillsError.value = t('components.skill.actions.saveError')
-  } finally {
-    savingContent.value = false
   }
 }
 
@@ -1512,8 +1420,8 @@ onMounted(() => {
 
 .detail-header-main {
   display: flex;
-  gap: 16px;
-  align-items: center;
+  gap: 20px;
+  align-items: flex-start;
 }
 
 .detail-icon {
@@ -1538,58 +1446,51 @@ onMounted(() => {
 
 .detail-copy {
   min-width: 0;
-}
-
-.detail-publisher {
-  margin: 0 0 4px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--mac-text-secondary);
+  flex: 1;
 }
 
 .detail-copy h2 {
-  margin: 0;
-  font-size: clamp(1.6rem, 2vw, 1.95rem);
-  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+  font-size: clamp(1.4rem, 1.8vw, 1.75rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.detail-tagline {
-  margin: 8px 0 0;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-.detail-subline {
+.detail-meta-row {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 10px 16px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-bottom: 8px;
   font-size: 0.82rem;
+}
+
+.detail-publisher {
+  font-weight: 700;
+  color: var(--mac-accent);
+}
+
+.detail-stat-sep {
+  color: color-mix(in srgb, var(--mac-border) 80%, transparent);
+  font-size: 0.75rem;
+}
+
+.detail-stat {
   color: var(--mac-text-secondary);
 }
 
-.detail-subline span {
-  position: relative;
-}
-
-.detail-subline span:not(:first-child)::before {
-  content: '';
-  position: absolute;
-  left: -9px;
-  top: 50%;
-  width: 3px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--mac-text-secondary);
-  transform: translateY(-50%);
+.detail-tagline {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--mac-text-secondary);
 }
 
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .detail-tabs {

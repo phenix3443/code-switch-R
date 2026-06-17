@@ -876,6 +876,8 @@
         "uninstallDropdown": "Uninstall ▾",
         "openSkillFolder": "Open skill folder",
         "openRepo": "Open repository",
+        "autoUpdate": "Auto Update",
+        "autoUpdateComingSoon": "Auto update coming soon",
         "confirmUninstall": "Uninstall {name}?",
         "uninstallSuccess": "{name} was uninstalled",
         "enableSuccess": "{name} was enabled",
