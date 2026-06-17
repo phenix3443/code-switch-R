@@ -174,59 +174,30 @@
               </div>
 
               <div class="detail-actions">
-                <template v-if="selectedSkill.installed">
-                  <div class="agent-chips">
-                    <span class="agent-chip" :class="{ active: selectedSkill.agents?.claude }">C</span>
-                    <span class="agent-chip" :class="{ active: selectedSkill.agents?.codex }">X</span>
-                  </div>
-                  <button
-                    class="btn-primary"
-                    :disabled="togglingSkill === selectedSkill.directory || isConflictSkill(selectedSkill)"
-                    @click="handleToggle(selectedSkill, !selectedSkill.enabled)"
-                  >
-                    {{ selectedSkill.enabled ? t('components.skill.actions.disableDropdown') : t('components.skill.actions.enableDropdown') }}
-                  </button>
-                  <div class="split-btn-group">
-                    <button
-                      class="btn-secondary split-main"
-                      :disabled="processingSkill === uninstallProcessingKey(selectedSkill)"
-                      @click="handleUninstall(selectedSkill)"
-                    >
-                      {{ t('components.skill.actions.uninstall') }}
-                    </button>
-                    <button
-                      class="btn-secondary split-caret"
-                      :disabled="processingSkill === uninstallProcessingKey(selectedSkill)"
-                      @click.stop="uninstallDropdownOpen = !uninstallDropdownOpen"
-                      aria-label="uninstall options"
-                    >▾</button>
-                    <div v-if="uninstallDropdownOpen" class="split-dropdown">
-                      <button type="button" @click="handleUninstallAgent(selectedSkill, 'claude')">{{ t('components.skill.actions.uninstallClaude') }}</button>
-                      <button type="button" @click="handleUninstallAgent(selectedSkill, 'codex')">{{ t('components.skill.actions.uninstallCodex') }}</button>
-                    </div>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="split-btn-group">
-                    <button
-                      class="btn-primary split-main"
-                      :disabled="isInstallingSkill(selectedSkill) || !canInstallSkill(selectedSkill)"
-                      @click="handleInstall(selectedSkill, [])"
-                    >
-                      {{ isInstallingSkill(selectedSkill) ? t('components.skill.install.installing') : t('components.skill.actions.installAll') }}
-                    </button>
-                    <button
-                      class="btn-primary split-caret"
-                      :disabled="isInstallingSkill(selectedSkill) || !canInstallSkill(selectedSkill)"
-                      @click.stop="installDropdownOpen = !installDropdownOpen"
-                      aria-label="install options"
-                    >▾</button>
-                    <div v-if="installDropdownOpen" class="split-dropdown">
-                      <button type="button" @click="handleInstall(selectedSkill, ['claude'])">{{ t('components.skill.actions.installClaude') }}</button>
-                      <button type="button" @click="handleInstall(selectedSkill, ['codex'])">{{ t('components.skill.actions.installCodex') }}</button>
-                    </div>
-                  </div>
-                </template>
+                <button
+                  class="agent-install-btn"
+                  :class="{ installed: selectedSkill.agents?.claude }"
+                  :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
+                  @click="selectedSkill.agents?.claude ? handleUninstallAgent(selectedSkill, 'claude') : handleInstall(selectedSkill, ['claude'])"
+                >
+                  Claude
+                </button>
+                <button
+                  class="agent-install-btn"
+                  :class="{ installed: selectedSkill.agents?.codex }"
+                  :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
+                  @click="selectedSkill.agents?.codex ? handleUninstallAgent(selectedSkill, 'codex') : handleInstall(selectedSkill, ['codex'])"
+                >
+                  Codex
+                </button>
+                <button
+                  v-if="selectedSkill.installed"
+                  class="btn-secondary"
+                  :disabled="togglingSkill === selectedSkill.directory || isConflictSkill(selectedSkill)"
+                  @click="handleToggle(selectedSkill, !selectedSkill.enabled)"
+                >
+                  {{ selectedSkill.enabled ? t('components.skill.actions.disableDropdown') : t('components.skill.actions.enableDropdown') }}
+                </button>
               </div>
             </header>
 
@@ -2104,30 +2075,39 @@ onMounted(() => {
   background: color-mix(in srgb, var(--mac-surface-strong) 78%, transparent);
 }
 
-.agent-chips {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.agent-chip {
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--mac-border) 58%, transparent);
-  font-size: 0.72rem;
-  font-weight: 700;
+.agent-install-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
+  background: transparent;
   color: var(--mac-text-secondary);
-  background: color-mix(in srgb, var(--mac-surface-strong) 72%, transparent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.agent-chip.active {
-  color: #22c55e;
-  border-color: color-mix(in srgb, #22c55e 48%, transparent);
-  background: color-mix(in srgb, #22c55e 12%, var(--mac-surface));
+.agent-install-btn:hover:not(:disabled) {
+  border-color: var(--mac-accent);
+  color: var(--mac-accent);
+}
+
+.agent-install-btn.installed {
+  background: var(--mac-accent);
+  border-color: var(--mac-accent);
+  color: #fff;
+}
+
+.agent-install-btn.installed:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--mac-accent) 80%, #000);
+  border-color: color-mix(in srgb, var(--mac-accent) 80%, #000);
+  color: #fff;
+}
+
+.agent-install-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .side-icon-links {
