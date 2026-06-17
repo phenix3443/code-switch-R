@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,7 +108,7 @@ func TestSkillPathHelpers(t *testing.T) {
 	home := t.TempDir()
 	setTestHomeDir(t, home)
 
-	if got := getUserSkillsPath(); got != filepath.Join(home, ".agent", "skills") {
+	if got := getUserSkillsPath(); got != filepath.Join(home, ".agents", "skills") {
 		t.Fatalf("getUserSkillsPath() = %q", got)
 	}
 	if got := getPlatformSkillsLinkPath(skillPlatformClaude); got != filepath.Join(home, ".claude", "skills") {
@@ -182,9 +183,6 @@ func TestInstallSkillAllowsFreshGitHubDirectoryWithoutExistingProvenance(t *test
 	setTestHomeDir(t, home)
 
 	ss := NewSkillService()
-	repoRoot := filepath.Join(home, "repo")
-	createSkillFixture(t, filepath.Join(repoRoot, "fresh-skill"), "fresh-skill", "Fresh Skill", "demo desc", "")
-
 	store := newDefaultSkillStore()
 	store.Repos = []skillRepoConfig{
 		{Owner: "owner", Name: "repo", Branch: "main", Enabled: true},
@@ -193,12 +191,20 @@ func TestInstallSkillAllowsFreshGitHubDirectoryWithoutExistingProvenance(t *test
 		t.Fatalf("预写 store 失败: %v", err)
 	}
 
-	ss.repoSnapshotter = func(repo skillRepoConfig) (string, string, func(), error) {
-		return repoRoot, repo.Branch, func() {}, nil
+	var gotArgs []string
+	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
+		gotArgs = append([]string(nil), args...)
+		createSkillFixture(t, filepath.Join(getUserSkillsPath(), "fresh-skill"), "fresh-skill", "Fresh Skill", "demo desc", "")
+		return []byte("ok"), nil
 	}
 
 	if err := ss.InstallSkill("fresh-skill", "owner", "repo", "main"); err != nil {
 		t.Fatalf("期望新目录可以正常安装，得到错误: %v", err)
+	}
+
+	expectedArgs := []string{"add", "owner/repo", "--skill", "fresh-skill", "--global", "--agent", "claude-code", "--agent", "codex", "-y"}
+	if strings.Join(gotArgs, " ") != strings.Join(expectedArgs, " ") {
+		t.Fatalf("skills add 参数不符合预期，得到 %#v", gotArgs)
 	}
 
 	assertSkillDirExists(t, filepath.Join(getUserSkillsPath(), "fresh-skill"))
@@ -233,8 +239,19 @@ func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
 		t.Fatalf("预写 store 失败: %v", err)
 	}
 
+	var gotArgs []string
+	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
+		gotArgs = append([]string(nil), args...)
+		return []byte("ok"), nil
+	}
+
 	if err := ss.UninstallSkill("demo-skill"); err != nil {
 		t.Fatalf("UninstallSkill() 失败: %v", err)
+	}
+
+	expectedArgs := []string{"remove", "demo-skill", "--global", "--agent", "claude-code", "--agent", "codex", "-y"}
+	if strings.Join(gotArgs, " ") != strings.Join(expectedArgs, " ") {
+		t.Fatalf("skills remove 参数不符合预期，得到 %#v", gotArgs)
 	}
 
 	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {

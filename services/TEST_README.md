@@ -6,7 +6,13 @@
 services/
 ├── providerservice_test.go    # 核心算法单元测试（~350行）
 ├── providerrelay_test.go      # 请求处理与端到端测试（~250行）
+├── skill_integration_test.go  # skills 服务级集成测试
+├── testhelpers/
+│   └── env.go                 # HOME 隔离、测试文件辅助
 └── testdata/
+    └── skills/
+        └── demo-skill/
+            └── SKILL.md       # skills 集成测试样例
     └── example-claude-config.json  # 测试配置示例
 ```
 
@@ -37,6 +43,9 @@ go test ./services/... -run TestProvider_IsModelSupported -v
 
 # 测试端到端场景
 go test ./services/... -run TestModelMappingEndToEnd -v
+
+# 测试 skills 模块完整集成流
+go test ./services/... -run TestSkillModuleIntegrationFlow -v
 ```
 
 ### 运行性能测试
@@ -75,19 +84,53 @@ go test ./services/... -run TestSkillServiceServiceStartup -v
 
 #### skillservice_test.go
 - ✅ 旧 `skill.json` 状态迁移到 `Provenance`
-- ✅ 统一目录 `~/.agent/skills` 的安装 / 卸载 / 内容读写
+- ✅ 统一目录 `~/.agents/skills` 的安装 / 卸载 / 内容读写
 - ✅ 目录来源冲突阻断
 - ✅ `ToggleSkill` 将 override 投影回 `SKILL.md`
 - ✅ installed / available skills 的来源分组
 
 #### skilllinks_test.go
 - ✅ clean state 下自动创建 Claude/Codex 链接
-- ✅ 从原始平台目录迁移到 `~/.agent/skills`
+- ✅ 从原始平台目录迁移到 `~/.agents/skills`
 - ✅ 同名不同内容冲突记录
 - ✅ 双平台重复内容去重
 - ✅ 备份记录生成
 - ✅ `EnsureSkillLinks()` reconcile `EnabledOverrides`
 - ✅ `SkillService.ServiceStartup()` 启动时自动执行 links 检查，冲突不阻断启动
+
+#### skill_integration_test.go
+- ✅ 隔离 HOME 下跑完整 startup / repair / migrate / install / toggle / content / uninstall 流
+- ✅ 验证 repo snapshot 安装链路与 diagnostics 输出
+- ✅ 验证统一目录与 Claude/Codex link 状态
+
+## 🧪 前端测试基建
+
+前端新增 `Vitest` 基础配置，当前先覆盖 `frontend/src/services/skill.ts` 的调用层 smoke tests：
+
+```bash
+cd frontend
+npm test
+```
+
+## 🖥️ 隔离测试实例
+
+如果需要启动一个不污染本地 `~/.code-switch` 的测试版 app，可以直接使用仓库根目录下的命令：
+
+```bash
+make test-app
+```
+
+默认行为：
+
+- 使用隔离 HOME：`./.tmp/test-home`
+- 使用独立 relay 端口：`18110`
+- 测试实例配置文件写入：`./.tmp/test-home/.code-switch/network.json`
+
+可选环境变量：
+
+```bash
+CODE_SWITCH_TEST_HOME=/tmp/code-switch-test-home CODE_SWITCH_TEST_PORT=18120 make test-app
+```
 
 ## 🎯 测试覆盖范围
 

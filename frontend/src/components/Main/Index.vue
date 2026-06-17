@@ -1499,7 +1499,7 @@ interface GeminiProvider {
   partnerPromotionKey?: string
   enabled: boolean
   level?: number // 优先级分组 (1-10, 默认 1)
-  envConfig?: Record<string, string | undefined>
+  envConfig?: Record<string, string>
   settingsConfig?: Record<string, any>
 }
 

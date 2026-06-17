@@ -392,7 +392,7 @@ const handleImport = async () => {
     }
   } catch (error) {
     console.error('import failed', error)
-    alert(t('components.general.import.failed') + ': ' + (error as Error).message)
+    alert(t('components.general.import.failed') + ': ' + extractErrorMessage(error))
   } finally {
     importing.value = false
   }
@@ -847,12 +847,15 @@ onMounted(async () => {
         <h2 class="mac-section-title">{{ $t('components.general.title.dataImport') }}</h2>
         <div class="mac-panel">
           <ListItem :label="$t('components.general.import.configPath')">
-            <input
-              type="text"
-              v-model="importPath"
-              :placeholder="$t('components.general.import.pathPlaceholder')"
-              class="mac-input import-path-input"
-            />
+            <div class="toggle-with-hint">
+              <input
+                type="text"
+                v-model="importPath"
+                :placeholder="$t('components.general.import.pathPlaceholder')"
+                class="mac-input import-path-input"
+              />
+              <span class="hint-text">{{ $t('components.general.import.pathHint') }}</span>
+            </div>
           </ListItem>
           <ListItem :label="$t('components.general.import.status')">
             <span class="info-text" v-if="importLoading">

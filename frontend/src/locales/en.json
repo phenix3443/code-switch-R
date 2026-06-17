@@ -36,6 +36,7 @@
         "custom": "Custom Address"
       },
       "customAddress": "Custom Address",
+      "relayPort": "Relay Port",
       "currentAddress": "Current Listen Address",
       "lanWarningTitle": "Security Warning",
       "lanWarningText": "LAN mode exposes your API keys to the local network. Only use this in trusted environments.",
@@ -628,7 +629,8 @@
       },
       "import": {
         "configPath": "Config file path",
-        "pathPlaceholder": "Enter cc-switch config file path",
+        "pathPlaceholder": "Enter the cc-switch config file or directory path",
+        "pathHint": "You can enter a config file, or the cc-switch config directory directly (for example ~/.cc-switch)",
         "status": "Config status",
         "loading": "Loading...",
         "configFound": "Config file found",
@@ -833,7 +835,7 @@
       "hero": {
         "eyebrow": "Skills Workspace",
         "title": "Manage Unified Local Skills",
-        "lead": "All skills are installed into ~/.agent/skills, then exposed to Claude and Codex through linked entry directories.",
+        "lead": "All skills are installed into ~/.agents/skills, then exposed to Claude and Codex through linked entry directories.",
         "installedCount": "installed",
         "recommendedCount": "recommended"
       },
@@ -852,7 +854,7 @@
         "installError": "Failed to install {name}. Please retry",
         "uninstallError": "Failed to uninstall {name}. Please retry",
         "toggle": "Enable/Disable",
-        "openFolder": "Open ~/.agent/skills",
+        "openFolder": "Open ~/.agents/skills",
         "loadFailed": "Failed to load content",
         "toggleError": "Failed to toggle skill status",
         "more": "More actions",
@@ -888,7 +890,7 @@
       "install": {
         "installing": "Installing...",
         "linksRequired": "Skill links are unhealthy. Repair Claude/Codex links before installing.",
-        "success": "{name} was installed into ~/.agent/skills"
+        "success": "{name} was installed into ~/.agents/skills"
       },
       "license": {
         "complete": "Complete terms in {file}"

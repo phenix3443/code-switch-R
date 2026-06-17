@@ -142,7 +142,11 @@ func (is *ImportService) ImportFromPath(path string) (ConfigImportResult, error)
 		log.Printf("⚠️  %v", err)
 		return result, err
 	}
-	path = filepath.Clean(path)
+	path, err := resolveCcSwitchImportPath(path)
+	if err != nil {
+		log.Printf("⚠️  cc-switch: 解析导入路径失败: %v", err)
+		return result, err
+	}
 	result.Status.ConfigPath = path
 
 	cfg, exists, err := loadCcSwitchConfigFromPath(path)
@@ -220,7 +224,12 @@ func loadCcSwitchConfig() (*ccSwitchConfig, bool, error) {
 }
 
 func loadCcSwitchConfigFromPath(path string) (*ccSwitchConfig, bool, error) {
-	path = filepath.Clean(strings.TrimSpace(path))
+	var err error
+	path, err = resolveCcSwitchImportPath(path)
+	if err != nil {
+		log.Printf("⚠️  cc-switch: 解析配置路径失败: %v", err)
+		return nil, false, err
+	}
 	if path == "" {
 		err := errors.New("cc-switch: 配置路径为空")
 		log.Printf("⚠️  %v", err)
@@ -470,12 +479,7 @@ func ccSwitchConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// 优先检查 SQLite 数据库（新版 cc-switch），然后是 JSON 配置文件
-	candidates := []string{
-		filepath.Join(home, ".cc-switch", "cc-switch.db"),       // 新版 SQLite
-		filepath.Join(home, ".cc-switch", "config.json.migrated"), // 旧版迁移后的 JSON
-		filepath.Join(home, ".cc-switch", "config.json"),          // 旧版 JSON
-	}
+	candidates := ccSwitchImportCandidates(filepath.Join(home, ".cc-switch"))
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
 			return p, nil
@@ -485,6 +489,53 @@ func ccSwitchConfigPath() (string, error) {
 	}
 	// 未找到现有文件时，默认使用 SQLite 路径
 	return candidates[0], nil
+}
+
+func resolveCcSwitchImportPath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", errors.New("cc-switch: 配置路径为空")
+	}
+	if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		path = home
+	} else if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		path = filepath.Join(home, strings.TrimPrefix(path, "~/"))
+	}
+
+	path = filepath.Clean(path)
+
+	info, err := os.Stat(path)
+	if err == nil && info.IsDir() {
+		for _, candidate := range ccSwitchImportCandidates(path) {
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate, nil
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return "", err
+			}
+		}
+		candidates := ccSwitchImportCandidates(path)
+		return candidates[0], nil
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	return path, nil
+}
+
+func ccSwitchImportCandidates(baseDir string) []string {
+	return []string{
+		filepath.Join(baseDir, "cc-switch.db"),
+		filepath.Join(baseDir, "config.json.migrated"),
+		filepath.Join(baseDir, "config.json"),
+	}
 }
 
 func firstRunMarkerPath() (string, error) {

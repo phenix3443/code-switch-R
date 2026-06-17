@@ -15,6 +15,7 @@ wails3 dev          # Dev mode: Vite HMR + Go hot reload (see build/config.yml d
 wails3 task build   # Build for current OS (delegates to build/<os>/Taskfile.yml)
 wails3 task package # Production package
 wails3 task run     # Run built binary
+make test-app       # 用仓库内隔离 HOME 启动测试实例（默认 ./.tmp/test-home, relay 18110）
 ```
 
 - Frontend deps install + bindings generation are wired as Task dependencies; you rarely call them directly. To regenerate frontend bindings after changing Go service signatures: `wails3 task common:generate:bindings`.
@@ -64,9 +65,9 @@ Enabling the proxy edits the real CLI config files (Codex `settings.json`, Codex
 Vue 3 + TypeScript + Vite + Tailwind v4, hash-routed (`router/index.ts`). One page-component directory per feature under `components/` (Main, Logs, Mcp, Skill, Prompts, Availability, SpeedTest, EnvCheck, Console, Setting, Gemini, Tray). `frontend/src/services/*.ts` are thin wrappers over the generated `bindings/`. i18n via `vue-i18n` (`locales/`), charts via `chart.js`/`vue-chartjs`, config editing via CodeMirror. `Tray/` renders the macOS tray popover window (a separate Wails window driven from `main.go`).
 
 ### Skills (`services/skillservice.go`, `services/skilllinks.go`, `frontend/src/components/Skill/`)
-Skills are now unified under `~/.agent/skills`. Claude and Codex no longer maintain separate physical skill directories; instead their entrypoints should link to the unified directory:
-- `~/.claude/skills -> ~/.agent/skills`
-- `~/.codex/skills -> ~/.agent/skills`
+Skills are now unified under `~/.agents/skills`. Claude and Codex no longer maintain separate physical skill directories; instead their entrypoints should link to the unified directory:
+- `~/.claude/skills -> ~/.agents/skills`
+- `~/.codex/skills -> ~/.agents/skills`
 
 `SkillService.ServiceStartup()` runs `EnsureSkillLinks()` once at startup to repair links, migrate legacy platform directories, reconcile enabled overrides back into `SKILL.md`, and persist backup/migration diagnostics for the UI. Conflicts are recorded into `Migrations` for the Skills page to surface rather than blocking app startup.
 

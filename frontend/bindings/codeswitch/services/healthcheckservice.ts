@@ -34,7 +34,7 @@ export function GetHistory(platform: string, providerName: string, limit: number
  * GetLatestResults 获取所有 Provider 的最新状态（按平台分组）
  * 优化：使用批量查询避免 N+1 查询问题
  */
-export function GetLatestResults(): $CancellablePromise<{ [_ in string]?: $models.ProviderTimeline[] }> {
+export function GetLatestResults(): $CancellablePromise<{ [_: string]: $models.ProviderTimeline[] }> {
     return $Call.ByID(2783106257).then(($result: any) => {
         return $$createType4($result);
     });
@@ -50,7 +50,7 @@ export function IsPollingRunning(): $CancellablePromise<boolean> {
 /**
  * RunAllChecks 手动触发全部检测
  */
-export function RunAllChecks(): $CancellablePromise<{ [_ in string]?: $models.HealthCheckResult[] }> {
+export function RunAllChecks(): $CancellablePromise<{ [_: string]: $models.HealthCheckResult[] }> {
     return $Call.ByID(1213979995).then(($result: any) => {
         return $$createType7($result);
     });

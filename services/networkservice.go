@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf16"
@@ -28,11 +29,12 @@ const (
 
 // NetworkSettings 网络设置
 type NetworkSettings struct {
-	ListenMode    ListenMode `json:"listenMode"`
-	CustomAddress string     `json:"customAddress,omitempty"`
-	CurrentAddress string    `json:"currentAddress,omitempty"`
-	WSLAutoConfig bool       `json:"wslAutoConfig"`
-	TargetCli     TargetCli  `json:"targetCli"`
+	ListenMode     ListenMode `json:"listenMode"`
+	CustomAddress  string     `json:"customAddress,omitempty"`
+	RelayPort      int        `json:"relayPort,omitempty"`
+	CurrentAddress string     `json:"currentAddress,omitempty"`
+	WSLAutoConfig  bool       `json:"wslAutoConfig"`
+	TargetCli      TargetCli  `json:"targetCli"`
 }
 
 // TargetCli 目标 CLI 工具配置
@@ -87,10 +89,12 @@ func NewNetworkService(
 
 // defaultSettings 默认网络设置
 func (ns *NetworkService) defaultSettings() NetworkSettings {
+	port := normalizeRelayPort(ExtractRelayPort(ns.relayAddr))
 	return NetworkSettings{
 		ListenMode:     ListenModeLocalhost,
 		CustomAddress:  "",
-		CurrentAddress: "127.0.0.1:18100",
+		RelayPort:      port,
+		CurrentAddress: formatHostPort("127.0.0.1", port),
 		WSLAutoConfig:  false, // 默认关闭
 		TargetCli: TargetCli{
 			ClaudeCode: true,
@@ -121,6 +125,10 @@ func (ns *NetworkService) GetNetworkSettings() (NetworkSettings, error) {
 	if err := json.Unmarshal(data, &settings); err != nil {
 		return ns.defaultSettings(), err
 	}
+	if settings.RelayPort == 0 && settings.CurrentAddress != "" {
+		settings.RelayPort = ExtractRelayPort(settings.CurrentAddress)
+	}
+	settings.RelayPort = normalizeRelayPort(settings.RelayPort)
 
 	// 计算当前监听地址
 	settings.CurrentAddress = ns.computeListenAddress(settings)
@@ -133,6 +141,7 @@ func (ns *NetworkService) SaveNetworkSettings(settings NetworkSettings) error {
 	ns.mu.Lock()
 	defer ns.mu.Unlock()
 
+	settings.RelayPort = normalizeRelayPort(settings.RelayPort)
 	// 计算当前监听地址
 	settings.CurrentAddress = ns.computeListenAddress(settings)
 
@@ -149,27 +158,102 @@ func (ns *NetworkService) SaveNetworkSettings(settings NetworkSettings) error {
 	return AtomicWriteBytes(ns.settingsPath, data)
 }
 
+const defaultRelayPort = 18100
+
+func normalizeRelayPort(port int) int {
+	if port <= 0 || port > 65535 {
+		return defaultRelayPort
+	}
+	return port
+}
+
+func formatHostPort(host string, port int) string {
+	return fmt.Sprintf("%s:%d", host, normalizeRelayPort(port))
+}
+
 // computeListenAddress 计算监听地址
 func (ns *NetworkService) computeListenAddress(settings NetworkSettings) string {
+	port := normalizeRelayPort(settings.RelayPort)
 	switch settings.ListenMode {
 	case ListenModeLocalhost:
-		return "127.0.0.1:18100"
+		return formatHostPort("127.0.0.1", port)
 	case ListenModeWSLAuto:
 		// WSL 模式下使用宿主机地址
 		if addr := ns.getWSLHostAddressInternal(); addr != "" {
-			return addr + ":18100"
+			return formatHostPort(addr, port)
 		}
-		return "127.0.0.1:18100"
+		return formatHostPort("127.0.0.1", port)
 	case ListenModeLAN:
-		return "0.0.0.0:18100"
+		return formatHostPort("0.0.0.0", port)
 	case ListenModeCustom:
 		if settings.CustomAddress != "" {
 			return settings.CustomAddress
 		}
-		return "0.0.0.0:18100"
+		return formatHostPort("0.0.0.0", port)
 	default:
-		return "127.0.0.1:18100"
+		return formatHostPort("127.0.0.1", port)
 	}
+}
+
+func LoadRelayAddressFromNetworkSettings(path string) (string, error) {
+	defaults := NetworkSettings{
+		ListenMode: ListenModeLocalhost,
+		RelayPort:  defaultRelayPort,
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return formatHostPort("127.0.0.1", defaultRelayPort), nil
+		}
+		return "", err
+	}
+	if len(data) == 0 {
+		return formatHostPort("127.0.0.1", defaultRelayPort), nil
+	}
+
+	if err := json.Unmarshal(data, &defaults); err != nil {
+		return "", err
+	}
+	if defaults.RelayPort == 0 && defaults.CurrentAddress != "" {
+		defaults.RelayPort = ExtractRelayPort(defaults.CurrentAddress)
+	}
+	defaults.RelayPort = normalizeRelayPort(defaults.RelayPort)
+
+	service := &NetworkService{}
+	return service.computeListenAddress(defaults), nil
+}
+
+func LoadRelayAddress() string {
+	home, err := getUserHomeDir()
+	if err != nil {
+		return formatHostPort("127.0.0.1", defaultRelayPort)
+	}
+	addr, err := LoadRelayAddressFromNetworkSettings(filepath.Join(home, appSettingsDir, networkSettingsFile))
+	if err != nil {
+		fmt.Printf("[NetworkService] 读取 relay 地址失败，回退默认值: %v\n", err)
+		return formatHostPort("127.0.0.1", defaultRelayPort)
+	}
+	return addr
+}
+
+func ExtractRelayPort(addr string) int {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return defaultRelayPort
+	}
+	if strings.HasPrefix(addr, ":") {
+		if port, err := strconv.Atoi(strings.TrimPrefix(addr, ":")); err == nil {
+			return normalizeRelayPort(port)
+		}
+		return defaultRelayPort
+	}
+	if host, portText, found := strings.Cut(addr, ":"); found && host != "" && portText != "" {
+		if port, convErr := strconv.Atoi(portText); convErr == nil {
+			return normalizeRelayPort(port)
+		}
+	}
+	return defaultRelayPort
 }
 
 // decodeUTF16LE 将 UTF-16 LE 编码的字节转换为 UTF-8 字符串
@@ -315,7 +399,7 @@ func (ns *NetworkService) ConfigureWSLClients(targets TargetCli) ConfigureResult
 	if hostAddr == "" {
 		hostAddr = "127.0.0.1"
 	}
-	proxyURL := fmt.Sprintf("http://%s:18100", hostAddr)
+	proxyURL := fmt.Sprintf("http://%s", formatHostPort(hostAddr, ExtractRelayPort(ns.relayAddr)))
 
 	var errors []string
 	var successes []string

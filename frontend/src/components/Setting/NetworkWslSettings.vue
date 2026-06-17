@@ -32,6 +32,18 @@
           />
         </ListItem>
 
+        <ListItem :label="t('settings.network.relayPort')">
+          <input
+            v-model.number="relayPort"
+            type="number"
+            min="1"
+            max="65535"
+            class="mac-input"
+            placeholder="18100"
+            @blur="handleRelayPortChange"
+          />
+        </ListItem>
+
         <!-- LAN Security Warning -->
         <div v-if="listenMode === 'lan'" class="security-warning">
           <div class="warning-icon">
@@ -151,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Call } from '@wailsio/runtime'
 import ListItem from './ListRow.vue'
@@ -163,6 +175,7 @@ const { t } = useI18n()
 type ListenMode = 'localhost' | 'wsl_auto' | 'lan' | 'custom'
 const listenMode = ref<ListenMode>('localhost')
 const customAddress = ref('')
+const relayPort = ref(18100)
 const currentListenAddress = ref('127.0.0.1:18100')
 
 // WSL state
@@ -179,20 +192,28 @@ const targetCli = reactive({
   gemini: true,
 })
 
+const normalizedRelayPort = (): number => {
+  if (!Number.isFinite(relayPort.value) || relayPort.value < 1 || relayPort.value > 65535) {
+    return 18100
+  }
+  return Math.trunc(relayPort.value)
+}
+
 // Computed current address based on mode
 const computeListenAddress = (): string => {
+  const port = normalizedRelayPort()
   switch (listenMode.value) {
     case 'localhost':
-      return '127.0.0.1:18100'
+      return `127.0.0.1:${port}`
     case 'wsl_auto':
       // Will be determined by backend
       return currentListenAddress.value
     case 'lan':
-      return '0.0.0.0:18100'
+      return `0.0.0.0:${port}`
     case 'custom':
-      return customAddress.value || '0.0.0.0:18100'
+      return customAddress.value || `0.0.0.0:${port}`
     default:
-      return '127.0.0.1:18100'
+      return `127.0.0.1:${port}`
   }
 }
 
@@ -203,6 +224,7 @@ const loadSettings = async () => {
     if (settings) {
       listenMode.value = settings.listenMode || 'localhost'
       customAddress.value = settings.customAddress || ''
+      relayPort.value = settings.relayPort || 18100
       currentListenAddress.value = settings.currentAddress || '127.0.0.1:18100'
       wslAutoConfig.value = settings.wslAutoConfig || false
       if (settings.targetCli) {
@@ -237,6 +259,7 @@ const saveSettings = async () => {
     await Call.ByName('codeswitch/services.NetworkService.SaveNetworkSettings', {
       listenMode: listenMode.value,
       customAddress: customAddress.value,
+      relayPort: normalizedRelayPort(),
       wslAutoConfig: wslAutoConfig.value,
       targetCli: { ...targetCli },
     })
@@ -256,7 +279,7 @@ const handleListenModeChange = async () => {
     try {
       const addr = await Call.ByName('codeswitch/services.NetworkService.GetWSLHostAddress')
       if (addr) {
-        currentListenAddress.value = `${addr}:18100`
+        currentListenAddress.value = `${addr}:${normalizedRelayPort()}`
       }
     } catch (error) {
       console.error('Failed to get WSL host address:', error)
@@ -266,8 +289,30 @@ const handleListenModeChange = async () => {
 
 const handleCustomAddressChange = async () => {
   if (listenMode.value === 'custom') {
-    currentListenAddress.value = customAddress.value || '0.0.0.0:18100'
+    currentListenAddress.value = customAddress.value || `0.0.0.0:${normalizedRelayPort()}`
     await saveSettings()
+  }
+}
+
+const handleRelayPortChange = async () => {
+  relayPort.value = normalizedRelayPort()
+  if (listenMode.value !== 'wsl_auto') {
+    currentListenAddress.value = computeListenAddress()
+  }
+  await saveSettings()
+
+  if (listenMode.value === 'wsl_auto') {
+    try {
+      const addr = await Call.ByName('codeswitch/services.NetworkService.GetWSLHostAddress')
+      if (addr) {
+        currentListenAddress.value = `${addr}:${normalizedRelayPort()}`
+      } else {
+        currentListenAddress.value = `127.0.0.1:${normalizedRelayPort()}`
+      }
+    } catch (error) {
+      console.error('Failed to get WSL host address:', error)
+      currentListenAddress.value = `127.0.0.1:${normalizedRelayPort()}`
+    }
   }
 }
 
