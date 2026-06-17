@@ -967,6 +967,8 @@
         "overview": "说明",
         "content": "SKILL.md",
         "status": "状态 & 迁移",
+        "details": "详情",
+        "changelog": "更新日志",
         "contentHelp": "直接编辑统一目录中的 SKILL.md"
       },
       "info": {

@@ -213,7 +213,16 @@
               </div>
             </header>
 
-            <div class="detail-layout-vscode">
+            <nav class="detail-tabs">
+              <button :class="{ active: activeTab === 'details' }" @click="activeTab = 'details'">
+                {{ t('components.skill.tabs.details') }}
+              </button>
+              <button :class="{ active: activeTab === 'changelog' }" @click="activeTab = 'changelog'">
+                {{ t('components.skill.tabs.changelog') }}
+              </button>
+            </nav>
+
+            <div v-if="activeTab === 'details'" class="detail-layout-vscode">
               <section class="detail-content-pane">
                 <section class="detail-block install">
                   <div class="detail-block-label">INSTALLATION</div>
@@ -283,6 +292,34 @@
                   </div>
                 </section>
               </aside>
+            </div>
+
+            <div v-else class="detail-panel">
+              <div v-if="selectedSkill.installed" class="editor-shell">
+                <div class="editor-toolbar">
+                  <span>{{ t('components.skill.tabs.contentHelp') }}</span>
+                  <button class="btn-secondary" :disabled="!contentDirty || savingContent" @click="saveSelectedContent">
+                    {{ savingContent ? t('common.saving') : t('common.save') }}
+                  </button>
+                </div>
+                <textarea v-model="skillContentDraft" class="skill-editor" spellcheck="false"></textarea>
+              </div>
+              <div v-else class="timeline-block">
+                <h3>{{ t('components.skill.summary.migrations') }}</h3>
+                <div v-if="relatedMigrationRecords.length" class="timeline-list">
+                  <article v-for="record in relatedMigrationRecords" :key="recordKey(record)" class="timeline-item">
+                    <div class="timeline-item-head">
+                      <strong>{{ record.directory || record.platform || t('components.skill.summary.unknownRecord') }}</strong>
+                      <span class="row-badge" :class="badgeClassForMigration(record.status)">{{ formatMigrationStatus(record.status) }}</span>
+                    </div>
+                    <p>{{ record.message || t('components.skill.summary.noMessage') }}</p>
+                    <small>{{ formatDate(record.created_at) }}</small>
+                  </article>
+                </div>
+                <div v-else class="detail-placeholder">
+                  {{ t('components.skill.summary.noMigrations') }}
+                </div>
+              </div>
             </div>
           </template>
         </section>
@@ -416,6 +453,7 @@ import {
 } from '../../services/skill'
 
 type FilterMode = 'all' | 'enabled' | 'conflict'
+type DetailTab = 'details' | 'changelog'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -440,6 +478,10 @@ const processingSkill = ref('')
 const togglingSkill = ref('')
 const repoBusy = ref(false)
 const repairing = ref(false)
+const activeTab = ref<DetailTab>('details')
+const skillContentDraft = ref('')
+const originalSkillContent = ref('')
+const savingContent = ref(false)
 const selectedSkillKey = ref('')
 const searchQuery = ref('')
 const filterMode = ref<FilterMode>('all')
@@ -504,7 +546,7 @@ const selectedSourceLabel = computed(() => {
   return selectedSkill.value.source_group_label || t('components.skill.groups.unknownSource')
 })
 
-const contentDirty = computed(() => false)
+const contentDirty = computed(() => skillContentDraft.value !== originalSkillContent.value)
 
 const selectedOverview = computed(() => {
   if (!selectedSkill.value) return ''
@@ -583,8 +625,22 @@ const syncTooltip = (label: string, path: string, status?: string) => {
 }
 
 watch(selectedSkill, async (skill) => {
+  activeTab.value = 'details'
   openSkillMenuKey.value = ''
-  if (!skill?.installed) return
+  if (!skill?.installed) {
+    originalSkillContent.value = ''
+    skillContentDraft.value = ''
+    return
+  }
+  try {
+    const content = await getSkillContent(skill.directory)
+    originalSkillContent.value = content
+    skillContentDraft.value = content
+  } catch (error) {
+    console.error('failed to load skill content', error)
+    originalSkillContent.value = t('components.skill.actions.loadFailed')
+    skillContentDraft.value = originalSkillContent.value
+  }
 }, { immediate: true })
 
 const skillIdentity = (skill: SkillSummary) =>
@@ -865,6 +921,22 @@ const openInstalledFolder = async (skill: SkillSummary) => {
     await openInstalledSkillFolder(skill.directory)
   } catch (error) {
     console.error('failed to open installed skill folder', error)
+  }
+}
+
+const saveSelectedContent = async () => {
+  if (!selectedSkill.value?.installed || !contentDirty.value) return
+  savingContent.value = true
+  try {
+    await saveSkillContent(selectedSkill.value.directory, skillContentDraft.value)
+    originalSkillContent.value = skillContentDraft.value
+    notice.value = t('components.skill.actions.saveSuccess')
+    await loadGroupedSkills()
+  } catch (error) {
+    console.error('failed to save skill content', error)
+    skillsError.value = t('components.skill.actions.saveError')
+  } finally {
+    savingContent.value = false
   }
 }
 

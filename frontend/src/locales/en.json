@@ -966,6 +966,8 @@
         "overview": "Overview",
         "content": "SKILL.md",
         "status": "Status & migration",
+        "details": "Details",
+        "changelog": "Changelog",
         "contentHelp": "Edit SKILL.md directly from the unified skills directory"
       },
       "info": {
