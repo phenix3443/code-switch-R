@@ -7,6 +7,7 @@ TEST_PORT="${CODE_SWITCH_TEST_PORT:-${TEST_PORT:-18110}}"
 TEST_VITE_PORT="${WAILS_VITE_PORT:-9255}"
 TEST_GOPATH="${GOPATH:-$(go env GOPATH 2>/dev/null)}"
 WAILS3_BIN="${WAILS3_BIN:-}"
+COMMAND="${1:-start}"
 
 if [[ -z "$WAILS3_BIN" ]]; then
   if command -v wails3 >/dev/null 2>&1; then
@@ -39,12 +40,50 @@ export PATH="$(dirname "$WAILS3_BIN"):$PATH"
 
 "$ROOT_DIR/scripts/prepare-test-home.sh"
 
+is_running() {
+  if [[ ! -f "$PID_FILE" ]]; then
+    return 1
+  fi
+  local pid
+  pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [[ -z "$pid" ]]; then
+    return 1
+  fi
+  kill -0 "$pid" >/dev/null 2>&1
+}
+
 export HOME="$TEST_HOME"
 export USERPROFILE="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
 if [[ -n "$TEST_GOPATH" ]]; then
   export GOPATH="$TEST_GOPATH"
 fi
+STATE_DIR="$HOME/.code-switch"
+PID_FILE="$STATE_DIR/test-app.pid"
+LOG_FILE="$STATE_DIR/test-app.log"
+
+case "$COMMAND" in
+  stop)
+    if is_running; then
+      pid="$(cat "$PID_FILE")"
+      kill "$pid"
+      rm -f "$PID_FILE"
+      echo "Stopped test app: PID $pid"
+    else
+      rm -f "$PID_FILE"
+      echo "Test app is not running"
+    fi
+    exit 0
+    ;;
+  logs)
+    if [[ ! -f "$LOG_FILE" ]]; then
+      echo "Log file not found: $LOG_FILE" >&2
+      exit 1
+    fi
+    tail -n 200 -f "$LOG_FILE"
+    ;;
+esac
+
 TEST_VITE_PORT="$(find_available_port "$TEST_VITE_PORT")"
 export WAILS_VITE_PORT="$TEST_VITE_PORT"
 
@@ -54,6 +93,16 @@ echo "Vite port: $TEST_VITE_PORT"
 if [[ -n "${GOPATH:-}" ]]; then
   echo "Go path: $GOPATH"
 fi
+echo "Log file: $LOG_FILE"
+
+if is_running; then
+  echo "Test app is already running: PID $(cat "$PID_FILE")"
+  exit 0
+fi
 
 cd "$ROOT_DIR"
-exec "$WAILS3_BIN" dev -config ./build/config.yml -port "$TEST_VITE_PORT"
+mkdir -p "$STATE_DIR"
+nohup "$WAILS3_BIN" dev -config ./build/config.yml -port "$TEST_VITE_PORT" >>"$LOG_FILE" 2>&1 &
+app_pid=$!
+echo "$app_pid" >"$PID_FILE"
+echo "Started test app in background: PID $app_pid"

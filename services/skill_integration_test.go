@@ -25,12 +25,6 @@ disable-model-invocation: false
 `)
 
 	ss := NewSkillService()
-	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
-		if len(args) >= 4 && args[0] == "add" && args[2] == "--skill" {
-			createSkillFixture(t, filepath.Join(getUserSkillsPath(), args[3]), args[3], "Demo Skill", "integration test demo skill", "disable-model-invocation: false\n")
-		}
-		return []byte("ok"), nil
-	}
 
 	repoRoot := filepath.Join(home, "repo-snapshot")
 	copyTestSkillFixture(t, filepath.Join("testdata", "skills", "demo-skill"), filepath.Join(repoRoot, "demo-skill"))
@@ -56,8 +50,8 @@ disable-model-invocation: false
 	}
 
 	status := ss.GetSkillLinkStatus()
-	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
-	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformClaude))
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformCodex))
 
 	legacyPath := filepath.Join(getUserSkillsPath(), "legacy-skill", "SKILL.md")
 	if _, err := os.Stat(legacyPath); err != nil {
@@ -75,7 +69,7 @@ disable-model-invocation: false
 		t.Fatalf("期望存在可安装 skills")
 	}
 
-	if err := ss.InstallSkill("demo-skill", "example", "skills", "main"); err != nil {
+	if err := ss.InstallSkill("demo-skill", "example", "skills", "main", nil); err != nil {
 		t.Fatalf("InstallSkill() 失败: %v", err)
 	}
 
@@ -120,7 +114,7 @@ disable-model-invocation: false
 		t.Fatalf("期望 skill 已禁用，得到: %s", contentAfterDisable)
 	}
 
-	if err := ss.UninstallSkill("demo-skill"); err != nil {
+	if err := ss.UninstallSkill("demo-skill", nil); err != nil {
 		t.Fatalf("UninstallSkill() 失败: %v", err)
 	}
 

@@ -1,4 +1,4 @@
-.PHONY: test-app test-app-build test-app-run test-app-clean
+.PHONY: test-app test-app-build test-app-run test-app-stop test-app-logs test-app-clean
 
 TEST_HOME ?= $(CURDIR)/.tmp/test-home
 TEST_PORT ?= 18110
@@ -9,6 +9,12 @@ WAILS3_DIR := $(dir $(WAILS3))
 
 test-app:
 	GOPATH="$(TEST_GOPATH)" WAILS_VITE_PORT="$(TEST_VITE_PORT)" ./scripts/run-test-app.sh
+
+test-app-stop:
+	TEST_HOME="$(TEST_HOME)" ./scripts/run-test-app.sh stop
+
+test-app-logs:
+	TEST_HOME="$(TEST_HOME)" ./scripts/run-test-app.sh logs
 
 test-app-build:
 	./scripts/prepare-test-home.sh

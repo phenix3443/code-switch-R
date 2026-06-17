@@ -99,6 +99,7 @@ export {
     ReqeustLog,
     RetryConfig,
     Skill,
+    SkillAgents,
     SkillDiagnostics,
     SkillGroup,
     SkillLinkEntry,

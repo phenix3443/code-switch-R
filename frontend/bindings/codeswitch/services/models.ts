@@ -2510,6 +2510,7 @@ export class Skill {
     "directory": string;
     "readme_url": string;
     "installed": boolean;
+    "agents": SkillAgents;
 
     /**
      * 是否启用（从 SKILL.md 读取）
@@ -2558,6 +2559,9 @@ export class Skill {
         if (!("installed" in $$source)) {
             this["installed"] = false;
         }
+        if (!("agents" in $$source)) {
+            this["agents"] = (new SkillAgents());
+        }
         if (!("enabled" in $$source)) {
             this["enabled"] = false;
         }
@@ -2575,8 +2579,40 @@ export class Skill {
      * Creates a new Skill instance from a string or object.
      */
     static createFrom($$source: any = {}): Skill {
+        const $$createField6_0 = $$createType25;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("agents" in $$parsedSource) {
+            $$parsedSource["agents"] = $$createField6_0($$parsedSource["agents"]);
+        }
         return new Skill($$parsedSource as Partial<Skill>);
+    }
+}
+
+/**
+ * SkillAgents 记录技能已安装到哪些 agent
+ */
+export class SkillAgents {
+    "claude": boolean;
+    "codex": boolean;
+
+    /** Creates a new SkillAgents instance. */
+    constructor($$source: Partial<SkillAgents> = {}) {
+        if (!("claude" in $$source)) {
+            this["claude"] = false;
+        }
+        if (!("codex" in $$source)) {
+            this["codex"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillAgents instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillAgents {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SkillAgents($$parsedSource as Partial<SkillAgents>);
     }
 }
 
@@ -2616,8 +2652,8 @@ export class SkillDiagnostics {
      * Creates a new SkillDiagnostics instance from a string or object.
      */
     static createFrom($$source: any = {}): SkillDiagnostics {
-        const $$createField4_0 = $$createType26;
-        const $$createField5_0 = $$createType28;
+        const $$createField4_0 = $$createType27;
+        const $$createField5_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("backups" in $$parsedSource) {
             $$parsedSource["backups"] = $$createField4_0($$parsedSource["backups"]);
@@ -2653,7 +2689,7 @@ export class SkillGroup {
      * Creates a new SkillGroup instance from a string or object.
      */
     static createFrom($$source: any = {}): SkillGroup {
-        const $$createField2_0 = $$createType30;
+        const $$createField2_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("skills" in $$parsedSource) {
             $$parsedSource["skills"] = $$createField2_0($$parsedSource["skills"]);
@@ -2667,6 +2703,7 @@ export class SkillLinkEntry {
     "status": string;
     "target"?: string;
     "error"?: string;
+    "linked_skill_count"?: number;
 
     /** Creates a new SkillLinkEntry instance. */
     constructor($$source: Partial<SkillLinkEntry> = {}) {
@@ -2717,8 +2754,8 @@ export class SkillLinkStatus {
      * Creates a new SkillLinkStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): SkillLinkStatus {
-        const $$createField2_0 = $$createType31;
-        const $$createField3_0 = $$createType31;
+        const $$createField2_0 = $$createType32;
+        const $$createField3_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("claude" in $$parsedSource) {
             $$parsedSource["claude"] = $$createField2_0($$parsedSource["claude"]);
@@ -3041,10 +3078,11 @@ const $$createType21 = TargetCli.createFrom;
 const $$createType22 = $Create.Map($Create.Any, $Create.Any);
 const $$createType23 = AvailabilityConfig.createFrom;
 const $$createType24 = $Create.Nullable($$createType23);
-const $$createType25 = backupRecord.createFrom;
-const $$createType26 = $Create.Array($$createType25);
-const $$createType27 = migrationRecord.createFrom;
-const $$createType28 = $Create.Array($$createType27);
-const $$createType29 = Skill.createFrom;
-const $$createType30 = $Create.Array($$createType29);
-const $$createType31 = SkillLinkEntry.createFrom;
+const $$createType25 = SkillAgents.createFrom;
+const $$createType26 = backupRecord.createFrom;
+const $$createType27 = $Create.Array($$createType26);
+const $$createType28 = migrationRecord.createFrom;
+const $$createType29 = $Create.Array($$createType28);
+const $$createType30 = Skill.createFrom;
+const $$createType31 = $Create.Array($$createType30);
+const $$createType32 = SkillLinkEntry.createFrom;

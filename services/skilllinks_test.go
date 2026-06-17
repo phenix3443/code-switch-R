@@ -21,8 +21,8 @@ func TestSkillLinksCleanState(t *testing.T) {
 	}
 
 	status := ss.GetSkillLinkStatus()
-	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
-	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformClaude))
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformCodex))
 
 	if !status.UserSkillsExists {
 		t.Fatalf("期望 user skills 目录存在")
@@ -48,8 +48,8 @@ func TestSkillLinksMigratePlatformDirectories(t *testing.T) {
 	assertSkillExists(t, filepath.Join(getUserSkillsPath(), "beta"))
 
 	status := ss.GetSkillLinkStatus()
-	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
-	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformClaude))
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformCodex))
 
 	store, err := ss.loadStore()
 	if err != nil {
@@ -162,13 +162,14 @@ func TestSkillLinksAlreadyCorrectLink(t *testing.T) {
 	if err := os.MkdirAll(userSkills, 0o755); err != nil {
 		t.Fatalf("创建 user skills 目录失败: %v", err)
 	}
+	// 模拟旧的整目录符号链接（指向 store）
 	for _, platform := range []string{skillPlatformClaude, skillPlatformCodex} {
 		linkPath := getPlatformSkillsLinkPath(platform)
 		if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
 			t.Fatalf("创建父目录失败: %v", err)
 		}
 		if err := os.Symlink(userSkills, linkPath); err != nil {
-			t.Fatalf("创建正确软链接失败: %v", err)
+			t.Fatalf("创建整目录软链接失败: %v", err)
 		}
 	}
 
@@ -177,9 +178,10 @@ func TestSkillLinksAlreadyCorrectLink(t *testing.T) {
 		t.Fatalf("EnsureSkillLinks() 返回错误: %v", err)
 	}
 
+	// 整目录链接应已迁移为真实目录
 	status := ss.GetSkillLinkStatus()
-	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, userSkills)
-	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, userSkills)
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformClaude))
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformCodex))
 }
 
 func TestEnsureSkillLinksReconcilesEnabledOverrides(t *testing.T) {
@@ -241,8 +243,8 @@ func TestSkillServiceServiceStartupEnsuresLinksOnStartup(t *testing.T) {
 	}
 
 	status := ss.GetSkillLinkStatus()
-	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
-	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformClaude))
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformCodex))
 }
 
 func TestSkillServiceServiceStartupDoesNotBlockOnMigrationConflict(t *testing.T) {

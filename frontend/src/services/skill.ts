@@ -1,5 +1,10 @@
 import { Call } from '@wailsio/runtime'
 
+export type SkillAgents = {
+  claude: boolean
+  codex: boolean
+}
+
 export type SkillSummary = {
   key: string
   name: string
@@ -7,6 +12,7 @@ export type SkillSummary = {
   directory: string
   readme_url: string
   installed: boolean
+  agents: SkillAgents
   enabled: boolean
   license_file?: string
   source_group_key: string
@@ -39,6 +45,7 @@ export type SkillLinkEntry = {
   status: string
   target?: string
   error?: string
+  linked_skill_count?: number
 }
 
 export type SkillLinkStatus = {
@@ -109,13 +116,14 @@ export const installSkill = async (
   directory: string,
   repoOwner = '',
   repoName = '',
-  repoBranch = ''
+  repoBranch = '',
+  agents: string[] = []
 ): Promise<void> => {
-  await Call.ByName('codeswitch/services.SkillService.InstallSkill', directory, repoOwner, repoName, repoBranch)
+  await Call.ByName('codeswitch/services.SkillService.InstallSkill', directory, repoOwner, repoName, repoBranch, agents)
 }
 
-export const uninstallSkill = async (directory: string): Promise<void> => {
-  await Call.ByName('codeswitch/services.SkillService.UninstallSkill', directory)
+export const uninstallSkill = async (directory: string, agents: string[] = []): Promise<void> => {
+  await Call.ByName('codeswitch/services.SkillService.UninstallSkill', directory, agents)
 }
 
 export const toggleSkill = async (directory: string, enabled: boolean): Promise<void> => {

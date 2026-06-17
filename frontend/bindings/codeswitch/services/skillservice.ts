@@ -42,10 +42,10 @@ export function GetSkillLinkStatus(): $CancellablePromise<$models.SkillLinkStatu
 }
 
 /**
- * InstallSkill installs a skill directory from the configured repositories.
+ * InstallSkill 从配置的仓库安装技能到指定 agent（空 agents 表示安装到全部）。
  */
-export function InstallSkill(directory: string, repoOwner: string, repoName: string, repoBranch: string): $CancellablePromise<void> {
-    return $Call.ByID(2924128557, directory, repoOwner, repoName, repoBranch);
+export function InstallSkill(directory: string, repoOwner: string, repoName: string, repoBranch: string, agents: string[]): $CancellablePromise<void> {
+    return $Call.ByID(2924128557, directory, repoOwner, repoName, repoBranch, agents);
 }
 
 /**
@@ -153,8 +153,11 @@ export function ToggleSkill(directory: string, enabled: boolean): $CancellablePr
     return $Call.ByID(2154856646, directory, enabled);
 }
 
-export function UninstallSkill(directory: string): $CancellablePromise<void> {
-    return $Call.ByID(3488362258, directory);
+/**
+ * UninstallSkill 卸载技能（空 agents 表示卸载全部 agent 并删除 store 文件）。
+ */
+export function UninstallSkill(directory: string, agents: string[]): $CancellablePromise<void> {
+    return $Call.ByID(3488362258, directory, agents);
 }
 
 // Private type creation functions

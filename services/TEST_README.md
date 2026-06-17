@@ -127,6 +127,15 @@ make test-app
 - 使用独立前端 dev 端口：`9255`
 - 测试实例配置文件写入：`./.tmp/test-home/.code-switch/network.json`
 - 默认复用当前机器的 `GOPATH`，避免把 Go module cache 写进测试 HOME 导致清理失败
+- 后台启动，日志写入：`./.tmp/test-home/.code-switch/test-app.log`
+- PID 文件：`./.tmp/test-home/.code-switch/test-app.pid`
+
+辅助命令：
+
+```bash
+make test-app-stop
+make test-app-logs
+```
 
 可选环境变量：
 

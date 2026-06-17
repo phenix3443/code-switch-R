@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -39,13 +38,20 @@ var (
 	}
 )
 
+// SkillAgents 记录技能已安装到哪些 agent
+type SkillAgents struct {
+	Claude bool `json:"claude"`
+	Codex  bool `json:"codex"`
+}
+
 type Skill struct {
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Directory   string `json:"directory"`
-	ReadmeURL   string `json:"readme_url"`
-	Installed   bool   `json:"installed"`
+	Key         string     `json:"key"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Directory   string     `json:"directory"`
+	ReadmeURL   string     `json:"readme_url"`
+	Installed   bool       `json:"installed"`
+	Agents      SkillAgents `json:"agents"`
 
 	Enabled          bool   `json:"enabled"`                 // 是否启用（从 SKILL.md 读取）
 	LicenseFile      string `json:"license_file,omitempty"`  // 许可证文件路径
@@ -133,13 +139,10 @@ type skillRepoConfig struct {
 	Enabled bool   `json:"enabled"`
 }
 
-type skillsCommandRunner func(ctx context.Context, args ...string) ([]byte, error)
-
 type SkillService struct {
 	httpClient      *http.Client
 	storePath       string
 	installDir      string
-	skillsRunner    skillsCommandRunner
 	repoSnapshotter func(skillRepoConfig) (string, string, func(), error)
 	mu              sync.Mutex
 }
@@ -153,7 +156,6 @@ func NewSkillService() *SkillService {
 		httpClient:      &http.Client{Timeout: 60 * time.Second},
 		storePath:       filepath.Join(home, skillStoreDir, skillStoreFile),
 		installDir:      getUserSkillsPath(),
-		skillsRunner:    runSkillsCLI,
 		repoSnapshotter: nil,
 	}
 }
@@ -382,11 +384,14 @@ func (ss *SkillService) ListSkills() ([]Skill, error) {
 	return skills, nil
 }
 
-// InstallSkill installs a skill directory from the configured repositories.
-func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch string) error {
+// InstallSkill 从配置的仓库安装技能到指定 agent（空 agents 表示安装到全部）。
+func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch string, agents []string) error {
 	directory = strings.TrimSpace(directory)
 	if directory == "" {
 		return errors.New("skill directory 不能为空")
+	}
+	if len(agents) == 0 {
+		agents = []string{skillPlatformClaude, skillPlatformCodex}
 	}
 	if err := ss.EnsureSkillLinks(); err != nil {
 		return err
@@ -399,6 +404,11 @@ func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch 
 	repos := ss.resolveReposForInstall(repoOwner, repoName, store.Repos)
 	if len(repos) == 0 {
 		return errors.New("未找到可用的技能仓库")
+	}
+
+	// store 中已有文件：直接建 per-agent 链接，不重新下载
+	if _, err := os.Stat(filepath.Join(ss.installDir, directory, "SKILL.md")); err == nil {
+		return ensureSkillAgentLinks(directory, agents)
 	}
 
 	var lastErr error
@@ -415,10 +425,46 @@ func (ss *SkillService) InstallSkill(directory, repoOwner, repoName, repoBranch 
 		if isProvenanceConflict(store.Provenance[directory], provenance) {
 			return fmt.Errorf("skill %s 目录名已被其他来源占用", directory)
 		}
-		if err := ss.installViaSkillsCLI(directory, repo, repoBranch); err != nil {
+
+		rootDir, _, cleanup, err := ss.prepareRepoSnapshot(repo)
+		if err != nil {
+			if cleanup != nil {
+				cleanup()
+			}
+			lastErr = fmt.Errorf("下载仓库 %s/%s 快照失败: %w", repo.Owner, repo.Name, err)
+			continue
+		}
+
+		skillSourceDir := filepath.Join(rootDir, directory)
+		if _, statErr := os.Stat(filepath.Join(skillSourceDir, "SKILL.md")); statErr != nil {
+			cleanup()
+			lastErr = fmt.Errorf("仓库 %s/%s 中未找到 skill %s", repo.Owner, repo.Name, directory)
+			continue
+		}
+
+		if err := os.MkdirAll(ss.installDir, 0o755); err != nil {
+			cleanup()
 			lastErr = err
 			continue
 		}
+		target := filepath.Join(ss.installDir, directory)
+		if err := os.RemoveAll(target); err != nil && !os.IsNotExist(err) {
+			cleanup()
+			lastErr = err
+			continue
+		}
+		if err := copyDirectory(skillSourceDir, target); err != nil {
+			cleanup()
+			lastErr = err
+			continue
+		}
+		cleanup()
+
+		if err := ensureSkillAgentLinks(directory, agents); err != nil {
+			lastErr = err
+			continue
+		}
+
 		ss.mu.Lock()
 		latestStore, err := ss.loadStoreLocked()
 		if err != nil {
@@ -456,48 +502,72 @@ func (ss *SkillService) installFromPathWithProvenance(directory, source string, 
 	}
 
 	ss.mu.Lock()
-	defer ss.mu.Unlock()
-
 	store, err := ss.loadStoreLocked()
 	if err != nil {
+		ss.mu.Unlock()
 		return err
 	}
 	if isProvenanceConflict(store.Provenance[directory], provenance) {
+		ss.mu.Unlock()
 		return fmt.Errorf("skill %s 目录名已被其他来源占用", directory)
 	}
 
 	target := filepath.Join(ss.installDir, directory)
 	if err := os.RemoveAll(target); err != nil && !os.IsNotExist(err) {
+		ss.mu.Unlock()
 		return err
 	}
 	if err := copyDirectory(source, target); err != nil {
+		ss.mu.Unlock()
 		return err
 	}
 
 	store.Provenance[directory] = normalizeSkillProvenance(provenance)
-	return ss.saveStoreLocked(store)
+	if err := ss.saveStoreLocked(store); err != nil {
+		ss.mu.Unlock()
+		return err
+	}
+	ss.mu.Unlock()
+
+	return ensureSkillAgentLinks(directory, []string{skillPlatformClaude, skillPlatformCodex})
 }
 
-func (ss *SkillService) UninstallSkill(directory string) error {
+// UninstallSkill 卸载技能（空 agents 表示卸载全部 agent 并删除 store 文件）。
+func (ss *SkillService) UninstallSkill(directory string, agents []string) error {
 	directory = strings.TrimSpace(directory)
 	if directory == "" {
 		return errors.New("skill directory 不能为空")
 	}
-	if err := ss.uninstallViaSkillsCLI(directory); err != nil {
+	if len(agents) == 0 {
+		agents = []string{skillPlatformClaude, skillPlatformCodex}
+	}
+
+	var errs []error
+	for _, agent := range agents {
+		if err := removeSkillAgentLink(agent, directory); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
 		return err
 	}
+
+	// 若还有 agent 在用，保留 store 文件
+	remaining := agentInstallState(directory)
+	if remaining.Claude || remaining.Codex {
+		return nil
+	}
+
 	target := filepath.Join(ss.installDir, directory)
 	if err := os.RemoveAll(target); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 	store, err := ss.loadStoreLocked()
 	if err != nil {
 		return err
-	}
-	if store.Skills == nil {
-		store.Skills = make(map[string]skillState)
 	}
 	delete(store.Skills, directory)
 	delete(store.Provenance, directory)
@@ -505,49 +575,6 @@ func (ss *SkillService) UninstallSkill(directory string) error {
 	return ss.saveStoreLocked(store)
 }
 
-func (ss *SkillService) installViaSkillsCLI(directory string, repo skillRepoConfig, repoBranch string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
-	source := buildSkillsCLISource(repo, repoBranch)
-	args := []string{
-		"add",
-		source,
-		"--skill", directory,
-		"--global",
-		"--agent", "claude-code",
-		"--agent", "codex",
-		"-y",
-	}
-	output, err := ss.skillsRunner(ctx, args...)
-	if err != nil {
-		return fmt.Errorf("skills add 失败: %w: %s", err, strings.TrimSpace(string(output)))
-	}
-
-	if _, statErr := os.Stat(filepath.Join(ss.installDir, directory, "SKILL.md")); statErr != nil {
-		return fmt.Errorf("skills add 后未找到已安装 skill %s: %w", directory, statErr)
-	}
-	return nil
-}
-
-func (ss *SkillService) uninstallViaSkillsCLI(directory string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
-	args := []string{
-		"remove",
-		directory,
-		"--global",
-		"--agent", "claude-code",
-		"--agent", "codex",
-		"-y",
-	}
-	output, err := ss.skillsRunner(ctx, args...)
-	if err != nil {
-		return fmt.Errorf("skills remove 失败: %w: %s", err, strings.TrimSpace(string(output)))
-	}
-	return nil
-}
 
 // ToggleSkill 切换技能的启用状态
 // 通过修改 SKILL.md 的 disable-model-invocation 字段实现
@@ -1128,22 +1155,6 @@ func buildBranchCandidates(preferred string) []string {
 	return ordered
 }
 
-func buildSkillsCLISource(repo skillRepoConfig, overrideBranch string) string {
-	branch := strings.TrimSpace(overrideBranch)
-	if branch == "" {
-		branch = strings.TrimSpace(repo.Branch)
-	}
-	if branch == "" || strings.EqualFold(branch, "main") {
-		return fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
-	}
-	return fmt.Sprintf("https://github.com/%s/%s/tree/%s", repo.Owner, repo.Name, branch)
-}
-
-func runSkillsCLI(ctx context.Context, args ...string) ([]byte, error) {
-	cmdArgs := append([]string{"--yes", "skills"}, args...)
-	cmd := exec.CommandContext(ctx, "npx", cmdArgs...)
-	return cmd.CombinedOutput()
-}
 
 func (ss *SkillService) downloadFile(rawURL, dest string) error {
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
@@ -1250,12 +1261,14 @@ func (ss *SkillService) scanInstalledSkills(store skillStore) []Skill {
 
 		provenance := normalizeSkillProvenance(store.Provenance[dir])
 		groupKey, groupLabel := buildSourceGroup(provenance.Type, provenance.RepoOwner, provenance.RepoName)
+		agents := agentInstallState(dir)
 		skills = append(skills, Skill{
 			Key:              buildSkillKey(provenance.RepoOwner, provenance.RepoName, dir),
 			Name:             name,
 			Description:      strings.TrimSpace(meta.Description),
 			Directory:        dir,
-			Installed:        true,
+			Installed:        agents.Claude || agents.Codex,
+			Agents:           agents,
 			Enabled:          enabled,
 			LicenseFile:      licenseFile,
 			RepoOwner:        provenance.RepoOwner,

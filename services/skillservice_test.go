@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -146,8 +145,8 @@ func TestInstallSkillUsesUnifiedUserSkillsDirectory(t *testing.T) {
 	}
 
 	status := ss.GetSkillLinkStatus()
-	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getUserSkillsPath())
-	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getUserSkillsPath())
+	assertLinkStatus(t, status.Claude, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformClaude))
+	assertLinkStatus(t, status.Codex, skillLinkStatusLinked, getPlatformSkillsLinkPath(skillPlatformCodex))
 }
 
 func TestInstallSkillBlocksConflictingDirectoryOwnership(t *testing.T) {
@@ -191,29 +190,35 @@ func TestInstallSkillAllowsFreshGitHubDirectoryWithoutExistingProvenance(t *test
 		t.Fatalf("预写 store 失败: %v", err)
 	}
 
-	var gotArgs []string
-	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
-		gotArgs = append([]string(nil), args...)
-		createSkillFixture(t, filepath.Join(getUserSkillsPath(), "fresh-skill"), "fresh-skill", "Fresh Skill", "demo desc", "")
-		return []byte("ok"), nil
+	repoRoot := filepath.Join(home, "fake-repo")
+	createSkillFixture(t, filepath.Join(repoRoot, "fresh-skill"), "fresh-skill", "Fresh Skill", "demo desc", "")
+	ss.repoSnapshotter = func(repo skillRepoConfig) (string, string, func(), error) {
+		return repoRoot, "main", func() {}, nil
 	}
 
-	if err := ss.InstallSkill("fresh-skill", "owner", "repo", "main"); err != nil {
+	if err := ss.InstallSkill("fresh-skill", "owner", "repo", "main", nil); err != nil {
 		t.Fatalf("期望新目录可以正常安装，得到错误: %v", err)
-	}
-
-	expectedArgs := []string{"add", "owner/repo", "--skill", "fresh-skill", "--global", "--agent", "claude-code", "--agent", "codex", "-y"}
-	if strings.Join(gotArgs, " ") != strings.Join(expectedArgs, " ") {
-		t.Fatalf("skills add 参数不符合预期，得到 %#v", gotArgs)
 	}
 
 	assertSkillDirExists(t, filepath.Join(getUserSkillsPath(), "fresh-skill"))
 
-	store, err := ss.loadStore()
+	// 验证 per-skill 符号链接已建立
+	for _, platform := range []string{skillPlatformClaude, skillPlatformCodex} {
+		linkPath := agentLinkPath(platform, "fresh-skill")
+		info, err := os.Lstat(linkPath)
+		if err != nil {
+			t.Fatalf("期望 %s per-skill 链接存在: %v", platform, err)
+		}
+		if !isSymlink(info) {
+			t.Fatalf("期望 %s per-skill 链接是符号链接", platform)
+		}
+	}
+
+	store2, err := ss.loadStore()
 	if err != nil {
 		t.Fatalf("loadStore() 失败: %v", err)
 	}
-	provenance := store.Provenance["fresh-skill"]
+	provenance := store2.Provenance["fresh-skill"]
 	if provenance.Type != "github" || provenance.RepoOwner != "owner" || provenance.RepoName != "repo" || provenance.RepoBranch != "main" {
 		t.Fatalf("期望写入 github provenance，得到 %#v", provenance)
 	}
@@ -227,6 +232,11 @@ func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
 	skillDir := filepath.Join(getUserSkillsPath(), "demo-skill")
 	createSkillFixture(t, skillDir, "demo-skill", "Demo Skill", "demo desc", "")
 
+	// 建 per-skill 链接，模拟已安装状态
+	if err := ensureSkillAgentLinks("demo-skill", []string{skillPlatformClaude, skillPlatformCodex}); err != nil {
+		t.Fatalf("建初始 per-skill 链接失败: %v", err)
+	}
+
 	store := newDefaultSkillStore()
 	store.Provenance["demo-skill"] = skillProvenance{
 		Type:       "github",
@@ -239,33 +249,22 @@ func TestUninstallSkillRemovesProvenanceAndOverride(t *testing.T) {
 		t.Fatalf("预写 store 失败: %v", err)
 	}
 
-	var gotArgs []string
-	ss.skillsRunner = func(ctx context.Context, args ...string) ([]byte, error) {
-		gotArgs = append([]string(nil), args...)
-		return []byte("ok"), nil
-	}
-
-	if err := ss.UninstallSkill("demo-skill"); err != nil {
+	if err := ss.UninstallSkill("demo-skill", nil); err != nil {
 		t.Fatalf("UninstallSkill() 失败: %v", err)
-	}
-
-	expectedArgs := []string{"remove", "demo-skill", "--global", "--agent", "claude-code", "--agent", "codex", "-y"}
-	if strings.Join(gotArgs, " ") != strings.Join(expectedArgs, " ") {
-		t.Fatalf("skills remove 参数不符合预期，得到 %#v", gotArgs)
 	}
 
 	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
 		t.Fatalf("期望 skill 目录被删除，得到 err=%v", err)
 	}
 
-	store, err := ss.loadStore()
+	store2, err := ss.loadStore()
 	if err != nil {
 		t.Fatalf("loadStore() 失败: %v", err)
 	}
-	if _, ok := store.Provenance["demo-skill"]; ok {
+	if _, ok := store2.Provenance["demo-skill"]; ok {
 		t.Fatalf("期望卸载后清理 provenance")
 	}
-	if _, ok := store.EnabledOverrides["demo-skill"]; ok {
+	if _, ok := store2.EnabledOverrides["demo-skill"]; ok {
 		t.Fatalf("期望卸载后清理 enabled_overrides")
 	}
 }
