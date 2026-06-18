@@ -231,6 +231,35 @@ go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 wails3 task dev
 ```
 
+### 项目级 LSP MCP
+
+仓库内已经提供项目级 Codex LSP MCP 配置：
+
+- `.codex/config.toml`
+- `.codex/cclsp.json`
+- `scripts/setup_project_lsp_mcp.sh`
+
+用途：
+- 给当前仓库的 Codex 提供基于 MCP 的 LSP 能力
+- 给当前仓库的 Claude 提供同一套基于 MCP 的 LSP 能力
+- 覆盖 Go / TypeScript / Vue
+- 不污染其他项目的全局配置
+
+初始化：
+
+```bash
+bash scripts/setup_project_lsp_mcp.sh
+```
+
+完成后：
+
+- 在本仓库根目录启动 Codex，会自动加载 `project-lsp`
+- 在本仓库根目录启动 Claude，也会通过项目级 `.mcp.json` 加载同名 `project-lsp`
+
+两者共用同一份：
+
+- `.codex/cclsp.json`
+
 ### 构建发布
 
 ```bash

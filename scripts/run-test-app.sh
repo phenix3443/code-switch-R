@@ -52,6 +52,18 @@ is_running() {
   kill -0 "$pid" >/dev/null 2>&1
 }
 
+kill_matching_processes() {
+  local pattern="$1"
+  local pids
+  pids="$(pgrep -f "$pattern" 2>/dev/null || true)"
+  if [[ -n "$pids" ]]; then
+    while IFS= read -r pid; do
+      [[ -n "$pid" ]] || continue
+      kill "$pid" >/dev/null 2>&1 || true
+    done <<<"$pids"
+  fi
+}
+
 export HOME="$TEST_HOME"
 export USERPROFILE="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
@@ -64,6 +76,7 @@ LOG_FILE="$STATE_DIR/test-app.log"
 
 case "$COMMAND" in
   stop)
+    kill_matching_processes "/Users/liushangliang/go/bin/wails3 dev -config ./build/config.yml -port ${TEST_VITE_PORT}"
     if is_running; then
       pid="$(cat "$PID_FILE")"
       kill "$pid"
@@ -99,6 +112,8 @@ if is_running; then
   echo "Test app is already running: PID $(cat "$PID_FILE")"
   exit 0
 fi
+
+kill_matching_processes "/Users/liushangliang/go/bin/wails3 dev -config ./build/config.yml -port ${TEST_VITE_PORT}"
 
 cd "$ROOT_DIR"
 mkdir -p "$STATE_DIR"

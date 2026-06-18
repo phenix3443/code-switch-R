@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "project-lsp": {
+      "command": "npx",
+      "args": ["-y", "cclsp@latest"],
+      "env": {
+        "CCLSP_CONFIG_PATH": "/Users/liushangliang/github/phenix3443/code-switch-R/.codex/cclsp.json"
+      }
+    }
+  }
+}

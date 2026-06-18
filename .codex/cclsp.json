@@ -1,0 +1,24 @@
+{
+  "servers": [
+    {
+      "extensions": ["go"],
+      "command": ["/Users/liushangliang/go/bin/gopls"],
+      "rootDir": "."
+    },
+    {
+      "extensions": ["js", "jsx", "ts", "tsx"],
+      "command": ["npx", "--yes", "typescript-language-server", "--stdio"],
+      "rootDir": "./frontend"
+    },
+    {
+      "extensions": ["vue"],
+      "command": ["npx", "--yes", "@vue/language-server", "--stdio"],
+      "rootDir": "./frontend",
+      "initializationOptions": {
+        "typescript": {
+          "tsdk": "./frontend/node_modules/typescript/lib"
+        }
+      }
+    }
+  ]
+}

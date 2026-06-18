@@ -25,6 +25,22 @@ describe('skill service api wrappers', async () => {
     expect(byName).toHaveBeenCalledWith('codeswitch/services.SkillService.ListGroupedSkills')
   })
 
+  it('fetchGroupedSkills returns response payload when service succeeds', async () => {
+    const grouped = {
+      installed: [
+        {
+          group_key: 'local',
+          group_label: 'LOCAL',
+          skills: []
+        }
+      ],
+      available: []
+    }
+    byName.mockResolvedValueOnce(grouped)
+
+    await expect(skillService.fetchGroupedSkills()).resolves.toEqual(grouped)
+  })
+
   it('installSkill forwards repo metadata', async () => {
     byName.mockResolvedValueOnce(undefined)
 
@@ -35,7 +51,8 @@ describe('skill service api wrappers', async () => {
       'demo-skill',
       'example',
       'skills',
-      'main'
+      'main',
+      []
     )
   })
 

@@ -77,6 +77,17 @@ Skills are now unified under `~/.agents/skills`. Claude and Codex no longer main
 - Version lives in `version_service.go` (`AppVersion = "vX.Y.Z"`) and `build/config.yml`; releases are tagged via `scripts/publish_release.sh`. Update service consumes `AppVersion`.
 - The repo root contains many transient artifacts (`test_*.exe`, `temp.txt`, ad-hoc `scripts/*.go` debug programs, version-stamped `*_PLAN/*_NOTES/*.md`). These are not part of the build — don't treat them as canonical.
 
+## UI 迭代约束
+
+- 当用户要求“参考某个现有产品/页面”做界面时，必须优先按参考对象的**信息架构、分组标题、层级、间距、交互位置**对齐，不要先做风格化发挥。
+- 不要把参考界面的“列表标题”“详情信息”“资源链接”“操作入口”混成新的自定义布局；优先保持原有职责边界，只替换为当前产品的领域文案。
+- Wails 桌面端调用与浏览器调试模式要分开处理。对后端 binding 调用，不要默认套前端超时包装，否则容易把成功结果误判成“加载失败”。
+- Skills 页面属于高密度信息界面：默认使用**细线分割、扁平列表、紧凑间距**；除非用户明确要求，不要引入大圆角卡片、大面积强调色按钮、重复信息块。
+- 当同一信息已经在列表区展示过，详情区不要再次用另一种结构重复展示；详情区应该补充“选中项的完整信息”，而不是复制列表摘要。
+- 推荐列表中的未实现功能，优先做成**菜单壳或占位入口**，不要提前接入错误的主按钮交互，更不要伪造完整可用流程。
+- 每次完成前端视觉改动后，必须先自行 CR 一次实际界面效果，再向用户汇报。至少检查：分组标题是否对齐、信息是否重复、图标是否正确、空状态/错误态是否被误触发、参考布局是否被改形。
+- 如果用户明确给了截图标注，优先逐条消除截图中的差异，不要在同一轮里擅自删除字段或改写成新的交互模型。
+
 ## Notes for this environment
 
 - `~/.Codex/AGENTS.md` (user global) defines Git/commit rules: branches `type/short-description`, Conventional Commits, one logical change per PR, minimal diffs (no unrequested refactors/fallbacks/abstractions), and the **Fix-to-Code Protocol** (any manual fix must be written back into source/script/config immediately).
