@@ -1,44 +1,5 @@
 <template>
   <div class="main-shell">
-    <div class="global-actions">
-      <p class="global-eyebrow">{{ t('components.skill.hero.eyebrow') }}</p>
-      <button class="ghost-icon" :title="t('components.skill.actions.back')" @click="goHome">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button class="ghost-icon" :title="t('components.skill.actions.refresh')" :disabled="refreshing" @click="refresh">
-        <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ spin: refreshing }">
-          <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-      <div class="menu-anchor">
-        <button class="ghost-icon" :title="t('components.skill.actions.more')" @click="toggleOverflowMenu">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="currentColor" />
-          </svg>
-        </button>
-        <div v-if="overflowMenuOpen" class="menu-popover global-menu-popover">
-          <button type="button" @click="openRepoModal">
-            {{ t('components.skill.repos.open') }}
-          </button>
-          <button type="button" @click="handleOpenFolder">
-            {{ t('components.skill.actions.openFolder') }}
-          </button>
-          <button type="button" @click="handleRepairLinks" :disabled="repairing">
-            {{ repairing ? t('components.skill.actions.repairing') : t('components.skill.actions.repairLinks') }}
-          </button>
-          <button type="button" @click="openBackupModal">
-            {{ t('components.skill.actions.viewBackups') }}
-          </button>
-          <button type="button" @click="conflictModalOpen = true" :disabled="!conflictRecords.length">
-            {{ t('components.skill.actions.viewConflicts') }}
-          </button>
-        </div>
-      </div>
-    </div>
-
     <div class="skill-workspace">
       <div v-if="skillsError" class="skill-banner error">{{ skillsError }}</div>
       <div v-else-if="notice" class="skill-banner">{{ notice }}</div>
@@ -46,6 +7,92 @@
       <section class="skill-layout">
         <aside class="skill-sidebar">
           <header class="sidebar-header">
+            <div class="sidebar-topbar">
+              <span class="sidebar-title">SKILLS</span>
+              <div class="sidebar-topbar-actions">
+                <button class="ghost-icon sm" :title="t('components.skill.actions.refresh')" :disabled="refreshing" @click="refresh">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ spin: refreshing }">
+                    <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <div class="menu-anchor">
+                  <button
+                    class="ghost-icon sm"
+                    :class="{ active: sidebarMenuOpen }"
+                    :title="t('components.skill.actions.more')"
+                    @click="toggleSidebarMenu"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <div v-if="sidebarMenuOpen" class="menu-popover sidebar-menu-popover">
+                    <div class="menu-item-with-submenu">
+                      <button type="button" class="menu-item-row" @click="toggleSidebarViews">
+                        <span>Views</span>
+                        <span class="submenu-caret">›</span>
+                      </button>
+                      <div v-if="sidebarViewsOpen" class="menu-popover submenu-popover">
+                        <button type="button" @click="toggleSection('installed')">
+                          <span class="menu-check">{{ visibleSections.installed ? '✓' : '' }}</span>
+                          <span>Installed</span>
+                        </button>
+                        <button type="button" @click="toggleSection('recommended')">
+                          <span class="menu-check">{{ visibleSections.recommended ? '✓' : '' }}</span>
+                          <span>Recommended</span>
+                        </button>
+                        <button type="button" @click="toggleSection('enabled')">
+                          <span class="menu-check">{{ visibleSections.enabled ? '✓' : '' }}</span>
+                          <span>Enabled</span>
+                        </button>
+                        <button type="button" @click="toggleSection('disabled')">
+                          <span class="menu-check">{{ visibleSections.disabled ? '✓' : '' }}</span>
+                          <span>Disabled</span>
+                        </button>
+                        <button type="button" @click="setFilterMode('mcp')">
+                          <span class="menu-check">{{ filterMode === 'mcp' ? '✓' : '' }}</span>
+                          <span>MCP Servers</span>
+                        </button>
+                        <button type="button" @click="setFilterMode('plugins')">
+                          <span class="menu-check">{{ filterMode === 'plugins' ? '✓' : '' }}</span>
+                          <span>Agent Plugins</span>
+                        </button>
+                      </div>
+                    </div>
+                    <button type="button" @click="refresh">
+                      {{ t('components.skill.menu.checkForSkillUpdates') }}
+                    </button>
+                    <button type="button" @click="refresh">
+                      {{ t('components.skill.menu.updateAllSkills') }}
+                    </button>
+                    <button type="button" @click="disableAutoUpdateForAll">
+                      {{ t('components.skill.menu.disableAutoUpdateForAllSkills') }}
+                    </button>
+                    <div class="menu-divider"></div>
+                    <button type="button" @click="setAllEnabled(true)">
+                      {{ t('components.skill.menu.enableAllSkills') }}
+                    </button>
+                    <button type="button" @click="setAllEnabled(false)">
+                      {{ t('components.skill.menu.disableAllInstalledSkills') }}
+                    </button>
+                    <button type="button" @click="showEnabledView">
+                      {{ t('components.skill.menu.showEnabledSkills') }}
+                    </button>
+                    <button type="button" @click="showDisabledView">
+                      {{ t('components.skill.menu.showDisabledSkills') }}
+                    </button>
+                    <button type="button" @click="openBisect">
+                      {{ t('components.skill.menu.startSkillBisect') }}
+                    </button>
+                    <div class="menu-divider"></div>
+                    <button type="button" @click="openRepoModal">
+                      {{ t('components.skill.menu.installFromRepository') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="search-shell">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M11 18a7 7 0 100-14 7 7 0 000 14zm8 3l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -67,9 +114,16 @@
           <div class="sidebar-body">
             <div v-if="loading" class="skill-empty">{{ t('components.skill.list.loading') }}</div>
             <template v-else>
-              <section class="skill-group-panel">
+              <section v-if="visibleSections.installed" class="skill-group-panel">
                 <button class="group-toggle" type="button" @click="collapsed.installed = !collapsed.installed">
-                  <span>{{ t('components.skill.groups.installed') }}</span>
+                  <span class="group-toggle-main">
+                    <span class="group-chevron" :class="{ collapsed: collapsed.installed }" aria-hidden="true">
+                      <svg viewBox="0 0 16 16">
+                        <path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span>Installed</span>
+                  </span>
                   <span class="group-badge">{{ filteredInstalledCount }}</span>
                 </button>
 
@@ -78,47 +132,44 @@
                     {{ t('components.skill.list.noInstalled') }}
                   </div>
 
-                  <section v-for="group in filteredInstalledGroups" :key="group.group_key" class="subgroup-panel">
-                    <button class="subgroup-toggle" type="button" @click="toggleSubgroup(group.group_key)">
-                      <div class="subgroup-title">
-                        <span>{{ group.group_label }}</span>
-                        <span class="group-badge">{{ group.skills.length }}</span>
-                      </div>
-                      <span class="subgroup-caret">{{ subgroupCollapsed[group.group_key] ? '+' : '−' }}</span>
-                    </button>
-
-                    <div v-if="!subgroupCollapsed[group.group_key]" class="subgroup-list">
-                      <div v-for="skill in group.skills" :key="skillIdentity(skill)" class="skill-row-wrap">
-                        <SkillCard
-                          :skill="skill"
-                          :selected="selectedSkillKey === skillIdentity(skill)"
-                          :conflict="isConflictSkill(skill)"
-                          @select="selectSkill"
-                          @menu="toggleSkillMenu"
-                        />
-                        <div v-if="openSkillMenuKey === skillIdentity(skill)" class="row-menu">
-                          <button type="button" @click="handleToggle(skill, !skill.enabled)">
-                            {{ skill.enabled ? t('components.skill.actions.disable') : t('components.skill.actions.enable') }}
-                          </button>
-                          <button type="button" @click="openInstalledFolder(skill)">
-                            {{ t('components.skill.actions.openSkillFolder') }}
-                          </button>
-                          <button type="button" @click="openSkillRepo(skill)" :disabled="!skill.readme_url">
-                            {{ t('components.skill.actions.openRepo') }}
-                          </button>
-                          <button type="button" class="danger" @click="handleUninstall(skill)">
-                            {{ t('components.skill.actions.uninstall') }}
-                          </button>
-                        </div>
+                  <div class="subgroup-list">
+                    <div v-for="skill in flatInstalledSkills" :key="skillIdentity(skill)" class="skill-row-wrap">
+                      <SkillCard
+                        :skill="skill"
+                        :selected="selectedSkillKey === skillIdentity(skill)"
+                        :conflict="isConflictSkill(skill)"
+                        @select="selectSkill"
+                        @menu="toggleSkillMenu"
+                      />
+                      <div v-if="openSkillMenuKey === skillIdentity(skill)" class="row-menu">
+                        <button type="button" @click="handleToggle(skill, !skill.enabled)">
+                          {{ skill.enabled ? t('components.skill.actions.disable') : t('components.skill.actions.enable') }}
+                        </button>
+                        <button type="button" @click="openInstalledFolder(skill)">
+                          {{ t('components.skill.actions.openSkillFolder') }}
+                        </button>
+                        <button type="button" @click="openSkillRepo(skill)" :disabled="!skill.readme_url">
+                          {{ t('components.skill.actions.openRepo') }}
+                        </button>
+                        <button type="button" class="danger" @click="handleUninstall(skill)">
+                          {{ t('components.skill.actions.uninstall') }}
+                        </button>
                       </div>
                     </div>
-                  </section>
+                  </div>
                 </div>
               </section>
 
-              <section class="skill-group-panel">
+              <section v-if="visibleSections.recommended" class="skill-group-panel">
                 <button class="group-toggle" type="button" @click="collapsed.recommended = !collapsed.recommended">
-                  <span>{{ t('components.skill.groups.recommended') }}</span>
+                  <span class="group-toggle-main">
+                    <span class="group-chevron" :class="{ collapsed: collapsed.recommended }" aria-hidden="true">
+                      <svg viewBox="0 0 16 16">
+                        <path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span>Recommended</span>
+                  </span>
                   <span class="group-badge">{{ filteredAvailableCount }}</span>
                 </button>
 
@@ -127,22 +178,116 @@
                     {{ t('components.skill.list.noRecommended') }}
                   </div>
 
-                  <section v-for="group in filteredAvailableGroups" :key="group.group_key" class="subgroup-panel recommended">
-                    <div class="subgroup-label">{{ group.group_label }}</div>
-                    <div class="subgroup-list">
+                  <div class="subgroup-list">
+                    <div v-for="skill in flatAvailableSkills" :key="skillIdentity(skill)" class="skill-row-wrap">
                       <SkillCard
-                        v-for="skill in group.skills"
-                        :key="skillIdentity(skill)"
                         :skill="skill"
                         :selected="selectedSkillKey === skillIdentity(skill)"
                         :loading="isInstallingSkill(skill)"
                         :disabled="!canInstallSkill(skill)"
                         :show-install-button="true"
                         @select="selectSkill"
-                        @install="handleInstall"
+                        @menu="toggleSkillMenu"
                       />
+                      <div v-if="openSkillMenuKey === skillIdentity(skill)" class="row-menu">
+                        <button type="button" @click="showRecommendedMenuNotice(skill)">
+                          Add to repo skills
+                        </button>
+                      </div>
                     </div>
-                  </section>
+                  </div>
+                </div>
+              </section>
+
+              <section v-if="visibleSections.enabled" class="skill-group-panel">
+                <button class="group-toggle" type="button" @click="collapsed.enabled = !collapsed.enabled">
+                  <span class="group-toggle-main">
+                    <span class="group-chevron" :class="{ collapsed: collapsed.enabled }" aria-hidden="true">
+                      <svg viewBox="0 0 16 16">
+                        <path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span>Enabled</span>
+                  </span>
+                  <span class="group-badge">{{ enabledSkillsCount }}</span>
+                </button>
+
+                <div v-if="!collapsed.enabled" class="group-body">
+                  <div v-if="!enabledSkills.length" class="skill-empty compact">
+                    {{ t('components.skill.list.noEnabled') }}
+                  </div>
+
+                  <div class="subgroup-list">
+                    <div v-for="skill in enabledSkills" :key="`enabled:${skillIdentity(skill)}`" class="skill-row-wrap">
+                      <SkillCard
+                        :skill="skill"
+                        :selected="selectedSkillKey === skillIdentity(skill)"
+                        :conflict="isConflictSkill(skill)"
+                        @select="selectSkill"
+                        @menu="toggleSkillMenu"
+                      />
+                      <div v-if="openSkillMenuKey === skillIdentity(skill)" class="row-menu">
+                        <button type="button" @click="handleToggle(skill, false)">
+                          {{ t('components.skill.actions.disable') }}
+                        </button>
+                        <button type="button" @click="openInstalledFolder(skill)">
+                          {{ t('components.skill.actions.openSkillFolder') }}
+                        </button>
+                        <button type="button" @click="openSkillRepo(skill)" :disabled="!skill.readme_url">
+                          {{ t('components.skill.actions.openRepo') }}
+                        </button>
+                        <button type="button" class="danger" @click="handleUninstall(skill)">
+                          {{ t('components.skill.actions.uninstall') }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section v-if="visibleSections.disabled" class="skill-group-panel">
+                <button class="group-toggle" type="button" @click="collapsed.disabled = !collapsed.disabled">
+                  <span class="group-toggle-main">
+                    <span class="group-chevron" :class="{ collapsed: collapsed.disabled }" aria-hidden="true">
+                      <svg viewBox="0 0 16 16">
+                        <path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span>Disabled</span>
+                  </span>
+                  <span class="group-badge">{{ disabledSkillsCount }}</span>
+                </button>
+
+                <div v-if="!collapsed.disabled" class="group-body">
+                  <div v-if="!disabledSkills.length" class="skill-empty compact">
+                    {{ t('components.skill.list.noDisabled') }}
+                  </div>
+
+                  <div class="subgroup-list">
+                    <div v-for="skill in disabledSkills" :key="`disabled:${skillIdentity(skill)}`" class="skill-row-wrap">
+                      <SkillCard
+                        :skill="skill"
+                        :selected="selectedSkillKey === skillIdentity(skill)"
+                        :conflict="isConflictSkill(skill)"
+                        @select="selectSkill"
+                        @menu="toggleSkillMenu"
+                      />
+                      <div v-if="openSkillMenuKey === skillIdentity(skill)" class="row-menu">
+                        <button type="button" @click="handleToggle(skill, true)">
+                          {{ t('components.skill.actions.enable') }}
+                        </button>
+                        <button type="button" @click="openInstalledFolder(skill)">
+                          {{ t('components.skill.actions.openSkillFolder') }}
+                        </button>
+                        <button type="button" @click="openSkillRepo(skill)" :disabled="!skill.readme_url">
+                          {{ t('components.skill.actions.openRepo') }}
+                        </button>
+                        <button type="button" class="danger" @click="handleUninstall(skill)">
+                          {{ t('components.skill.actions.uninstall') }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
             </template>
@@ -165,43 +310,38 @@
                   <h2>{{ selectedSkill.name }}</h2>
                   <div class="detail-meta-row">
                     <span class="detail-publisher">{{ selectedSourceLabel }}</span>
-                    <span class="detail-stat-sep">|</span>
-                    <span class="detail-stat">
-                      <svg class="stat-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v9M4.5 6.5L8 10l3.5-3.5M2 13h12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                      —
-                    </span>
-                    <span class="detail-stat-sep">|</span>
-                    <span class="detail-stat detail-stars">★★★★☆ (—)</span>
+                    <span class="detail-meta-sep">•</span>
+                    <span class="detail-meta-status">{{ detailStatusLabel }}</span>
                   </div>
                   <p class="detail-tagline">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
                   <div class="detail-actions">
                     <button
-                      class="agent-install-btn icon-only"
+                      class="agent-install-btn"
                       :class="{ installed: selectedSkill.agents?.claude }"
                       :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
-                      :title="selectedSkill.agents?.claude ? t('components.skill.actions.uninstallClaude') : 'Claude'"
+                      :title="selectedSkill.agents?.claude ? t('components.skill.actions.uninstallClaude') : t('components.skill.actions.installClaude')"
                       @click="selectedSkill.agents?.claude ? handleUninstallAgent(selectedSkill, 'claude') : handleInstall(selectedSkill, ['claude'])"
                     >
-                      <svg class="btn-agent-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M13.82 3.26a1.94 1.94 0 00-3.64 0L3.25 19.27a1 1 0 00.94 1.38h15.62a1 1 0 00.94-1.38L13.82 3.26z" fill="#E87040"/>
-                      </svg>
+                      <span v-if="claudeIcon" class="agent-install-icon" v-html="claudeIcon" aria-hidden="true"></span>
+                      <span class="sr-only">Claude</span>
                     </button>
                     <button
-                      class="agent-install-btn icon-only"
+                      class="agent-install-btn"
                       :class="{ installed: selectedSkill.agents?.codex }"
                       :disabled="isInstallingSkill(selectedSkill) || processingSkill === uninstallProcessingKey(selectedSkill)"
-                      :title="selectedSkill.agents?.codex ? t('components.skill.actions.uninstallCodex') : 'Codex'"
+                      :title="selectedSkill.agents?.codex ? t('components.skill.actions.uninstallCodex') : t('components.skill.actions.installCodex')"
                       @click="selectedSkill.agents?.codex ? handleUninstallAgent(selectedSkill, 'codex') : handleInstall(selectedSkill, ['codex'])"
                     >
-                      <svg class="btn-agent-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" fill="none" stroke="#10A37F" stroke-width="1.6"/>
-                        <path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13.5 7l-3 10" fill="none" stroke="#10A37F" stroke-width="1.5" stroke-linecap="round"/>
-                      </svg>
+                      <span v-if="codexIcon" class="agent-install-icon" v-html="codexIcon" aria-hidden="true"></span>
+                      <span class="sr-only">Codex</span>
                     </button>
-                    <label class="auto-update-label" :title="t('components.skill.actions.autoUpdateComingSoon')">
-                      <input type="checkbox" class="auto-update-check" disabled />
-                      {{ t('components.skill.actions.autoUpdate') }}
-                    </label>
+                    <button class="detail-inline-toggle" type="button" disabled :title="t('components.skill.actions.autoUpdateComingSoon')">
+                      <span class="detail-inline-check" aria-hidden="true"></span>
+                      <span>Auto Update</span>
+                    </button>
+                    <button class="detail-meta-link action" type="button" :disabled="!selectedSkill.readme_url" @click="openSkillRepo(selectedSkill)">
+                      {{ t('components.skill.actions.openRepo') }}
+                    </button>
                     <button
                       v-if="selectedSkill.installed"
                       class="btn-secondary"
@@ -224,8 +364,16 @@
 
             <div v-if="activeTab === 'details'" class="detail-layout-vscode">
               <section class="detail-content-pane">
+                <section class="detail-hero-block">
+                  <div class="detail-block-label">OVERVIEW</div>
+                  <p class="detail-hero-copy">{{ selectedSkill.description || t('components.skill.list.noDescription') }}</p>
+                </section>
+
                 <section class="detail-block install">
-                  <div class="detail-block-label">INSTALLATION</div>
+                  <div class="detail-block-head">
+                    <div class="detail-block-label">INSTALLATION</div>
+                    <span class="detail-block-kicker">{{ selectedSkill.installed ? 'Installed locally' : 'Install from repository' }}</span>
+                  </div>
                   <div class="install-command-row">
                     <code class="install-command">{{ installCommand || selectedSkill.directory }}</code>
                     <button
@@ -244,8 +392,13 @@
                 </section>
 
                 <section class="detail-block">
-                  <div class="detail-block-label">SKILL.MD</div>
-                  <pre class="detail-prose">{{ selectedOverview }}</pre>
+                  <div class="detail-block-head">
+                    <div class="detail-block-label">README</div>
+                    <span class="detail-block-kicker">{{ selectedSkill.installed ? 'Synced from SKILL.md' : 'Preview from repository metadata' }}</span>
+                  </div>
+                  <div class="detail-readme-shell">
+                    <pre class="detail-prose">{{ selectedOverview }}</pre>
+                  </div>
                 </section>
               </section>
 
@@ -253,6 +406,14 @@
                 <section class="side-panel">
                   <h3>Installation</h3>
                   <dl class="side-facts">
+                    <div>
+                      <dt>Identifier</dt>
+                      <dd>{{ detailIdentifier }}</dd>
+                    </div>
+                    <div>
+                      <dt>Version</dt>
+                      <dd>{{ detailVersion }}</dd>
+                    </div>
                     <div>
                       <dt>{{ t('components.skill.info.directory') }}</dt>
                       <dd>{{ selectedSkill.directory }}</dd>
@@ -263,31 +424,45 @@
                     </div>
                     <div>
                       <dt>Status</dt>
-                      <dd>{{ selectedSkill.installed ? (selectedSkill.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled')) : t('components.skill.groups.recommended') }}</dd>
+                      <dd>{{ detailStatusLabel }}</dd>
                     </div>
                   </dl>
                 </section>
 
                 <section class="side-panel">
-                  <h3>Repository</h3>
-                  <p class="side-panel-value">{{ selectedSourceLabel }}</p>
-                  <p v-if="selectedSkill.readme_url" class="side-panel-subtle">{{ selectedSkill.readme_url }}</p>
+                  <h3>Marketplace</h3>
+                  <dl class="side-facts">
+                    <div>
+                      <dt>Published</dt>
+                      <dd>{{ detailPublished }}</dd>
+                    </div>
+                    <div>
+                      <dt>Last Updated</dt>
+                      <dd>{{ detailLastUpdated }}</dd>
+                    </div>
+                    <div>
+                      <dt>Categories</dt>
+                      <dd>
+                        <span class="side-tag">{{ detailCategories }}</span>
+                      </dd>
+                    </div>
+                  </dl>
                 </section>
 
                 <section class="side-panel">
                   <h3>Resources</h3>
-                  <div class="side-icon-links">
-                    <button class="side-icon-link" type="button" @click="selectedSkill.installed ? openSelectedFolder() : handleOpenFolder()">
+                  <div class="side-resource-list">
+                    <button class="side-resource-link" type="button" @click="selectedSkill.installed ? openSelectedFolder() : handleOpenFolder()">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-                      {{ selectedSkill.installed ? t('components.skill.actions.openSkillFolder') : t('components.skill.actions.openFolder') }}
+                      <span>{{ selectedSkill.installed ? 'Local folder' : 'Repo skills folder' }}</span>
                     </button>
-                    <button class="side-icon-link" type="button" :disabled="!selectedSkill.readme_url" @click="openSkillRepo(selectedSkill)">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z" fill="currentColor"/></svg>
-                      {{ t('components.skill.actions.openRepo') }}
+                    <button class="side-resource-link" type="button" :disabled="!selectedSkill.readme_url" @click="openSkillRepo(selectedSkill)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M10 14L19 5M19 13v5h-5M5 19l6-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      <span>Marketplace page</span>
                     </button>
-                    <button class="side-icon-link" type="button" @click="backupModalOpen = true">
+                    <button class="side-resource-link" type="button" @click="backupModalOpen = true">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.25 8.25h13.5M8.25 12h7.5m-9 3.75h10.5A2.25 2.25 0 0019.5 13.5v-6A2.25 2.25 0 0017.25 5.25H6.75A2.25 2.25 0 004.5 7.5v6a2.25 2.25 0 002.25 2.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                      {{ t('components.skill.actions.viewBackups') }}
+                      <span>Backups</span>
                     </button>
                   </div>
                 </section>
@@ -423,7 +598,7 @@
 import { Browser } from '@wailsio/runtime'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import lobeIcons from '../../icons/lobeIconMap'
 import BaseModal from '../common/BaseModal.vue'
 import SkillCard from './SkillCard.vue'
 import {
@@ -452,10 +627,10 @@ import {
   type SkillSummary
 } from '../../services/skill'
 
-type FilterMode = 'all' | 'enabled' | 'conflict'
+type FilterMode = 'all' | 'enabled' | 'conflict' | 'disabled' | 'mcp' | 'plugins'
 type DetailTab = 'details' | 'changelog'
+type ViewFilterOption = 'installed' | 'recommended' | 'enabled' | 'disabled'
 
-const router = useRouter()
 const { t, locale } = useI18n()
 
 const groupedSkills = ref<GroupedSkills>({ installed: [], available: [] })
@@ -485,7 +660,8 @@ const savingContent = ref(false)
 const selectedSkillKey = ref('')
 const searchQuery = ref('')
 const filterMode = ref<FilterMode>('all')
-const overflowMenuOpen = ref(false)
+const sidebarMenuOpen = ref(false)
+const sidebarViewsOpen = ref(false)
 const openSkillMenuKey = ref('')
 const repoModalOpen = ref(false)
 const backupModalOpen = ref(false)
@@ -494,9 +670,16 @@ const pendingUninstallSkill = ref<SkillSummary | null>(null)
 
 const collapsed = reactive({
   installed: false,
-  recommended: false
+  recommended: false,
+  enabled: true,
+  disabled: true
 })
-const subgroupCollapsed = reactive<Record<string, boolean>>({})
+const visibleSections = reactive({
+  installed: true,
+  recommended: true,
+  enabled: false,
+  disabled: false
+})
 const repoForm = reactive({ url: '', branch: 'main' })
 
 const refreshing = computed(() => loading.value || repoLoading.value || repairing.value)
@@ -538,6 +721,9 @@ const detailAvatar = computed(() => {
   return source.charAt(0).toUpperCase()
 })
 
+const claudeIcon = computed(() => lobeIcons['claude'] ?? lobeIcons['anthropic'] ?? '')
+const codexIcon = computed(() => lobeIcons['openai'] ?? '')
+
 const selectedSourceLabel = computed(() => {
   if (!selectedSkill.value) return ''
   if (selectedSkill.value.repo_owner && selectedSkill.value.repo_name) {
@@ -551,7 +737,8 @@ const contentDirty = computed(() => skillContentDraft.value !== originalSkillCon
 const selectedOverview = computed(() => {
   if (!selectedSkill.value) return ''
   if (selectedSkill.value.installed) {
-    return selectedSkill.value.description || t('components.skill.list.noDescription')
+    const body = extractSkillBody(originalSkillContent.value).trim()
+    return body || selectedSkill.value.description || t('components.skill.list.noDescription')
   }
   return [
     selectedSkill.value.description || t('components.skill.list.noDescription'),
@@ -570,6 +757,42 @@ const installCommand = computed(() => {
 const copyTooltip = computed(() =>
   notice.value === installCommand.value && installCommand.value ? 'Copied' : 'Copy install command'
 )
+
+const detailIdentifier = computed(() => {
+  if (!selectedSkill.value) return '-'
+  const repo = selectedSkill.value.repo_name?.trim() || selectedSkill.value.repo_owner?.trim() || 'local'
+  return `${repo}.${selectedSkill.value.directory}`
+})
+
+const detailVersion = computed(() => {
+  if (!selectedSkill.value) return '-'
+  const branch = selectedSkill.value.repo_branch?.trim() || ''
+  if (/^[0-9a-f]{8,40}$/i.test(branch)) {
+    return branch.slice(0, 8)
+  }
+  return 'unknown'
+})
+
+const detailPublished = computed(() => {
+  if (!selectedSkill.value) return '-'
+  return '待开发'
+})
+
+const detailLastUpdated = computed(() => {
+  if (!selectedSkill.value) return '-'
+  return '待配置'
+})
+
+const detailCategories = computed(() => {
+  if (!selectedSkill.value) return '-'
+  return '待配置'
+})
+
+const detailStatusLabel = computed(() => {
+  if (!selectedSkill.value) return '-'
+  if (!selectedSkill.value.installed) return 'Recommended'
+  return selectedSkill.value.enabled ? t('components.skill.badges.enabled') : t('components.skill.badges.disabled')
+})
 
 const relatedMigrationRecords = computed(() => {
   if (!selectedSkill.value) return diagnostics.value.migrations.slice(0, 10)
@@ -604,8 +827,14 @@ const userSyncStatus = computed(() => {
 
 const filteredInstalledGroups = computed(() => filterGroups(installedGroups.value, true))
 const filteredAvailableGroups = computed(() => filterGroups(availableGroups.value, false))
-const filteredInstalledCount = computed(() => filteredInstalledGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
-const filteredAvailableCount = computed(() => filteredAvailableGroups.value.reduce((sum, group) => sum + group.skills.length, 0))
+const flatInstalledSkills = computed(() => filteredInstalledGroups.value.flatMap((group) => group.skills))
+const flatAvailableSkills = computed(() => filteredAvailableGroups.value.flatMap((group) => group.skills))
+const filteredInstalledCount = computed(() => flatInstalledSkills.value.length)
+const filteredAvailableCount = computed(() => flatAvailableSkills.value.length)
+const enabledSkills = computed(() => flatInstalledSkills.value.filter((skill) => skill.enabled))
+const disabledSkills = computed(() => flatInstalledSkills.value.filter((skill) => !skill.enabled))
+const enabledSkillsCount = computed(() => enabledSkills.value.length)
+const disabledSkillsCount = computed(() => disabledSkills.value.length)
 
 const filterLabel = computed(() => t(`components.skill.search.filters.${filterMode.value}`))
 
@@ -678,8 +907,14 @@ const filterGroups = (groups: SkillGroup[], installed: boolean) => {
         if (filterMode.value === 'enabled') {
           return installed ? skill.enabled : false
         }
+        if (filterMode.value === 'disabled') {
+          return installed ? !skill.enabled : false
+        }
         if (filterMode.value === 'conflict') {
           return isConflictSkill(skill)
+        }
+        if (filterMode.value === 'mcp' || filterMode.value === 'plugins') {
+          return false
         }
         return true
       })
@@ -695,7 +930,6 @@ const loadGroupedSkills = async () => {
   try {
     groupedSkills.value = await fetchGroupedSkills()
     ensureSelection()
-    ensureSubgroupState()
   } catch (error) {
     console.error('failed to load grouped skills', error)
     skillsError.value = t('components.skill.list.error')
@@ -728,11 +962,6 @@ const loadRepos = async () => {
   }
 }
 
-const refresh = () => {
-  notice.value = ''
-  void Promise.all([loadGroupedSkills(), loadStatus(), loadRepos()])
-}
-
 const ensureSelection = () => {
   const skills = allSkills.value
   if (!skills.length) {
@@ -744,24 +973,55 @@ const ensureSelection = () => {
   }
 }
 
-const ensureSubgroupState = () => {
-  for (const group of installedGroups.value) {
-    if (!(group.group_key in subgroupCollapsed)) {
-      subgroupCollapsed[group.group_key] = false
-    }
-  }
-}
-
 const selectSkill = (skill: SkillSummary) => {
   selectedSkillKey.value = skillIdentity(skill)
 }
 
-const toggleSubgroup = (key: string) => {
-  subgroupCollapsed[key] = !subgroupCollapsed[key]
+const refresh = () => {
+  sidebarMenuOpen.value = false
+  notice.value = ''
+  void Promise.all([loadGroupedSkills(), loadStatus(), loadRepos()])
 }
 
-const toggleOverflowMenu = () => {
-  overflowMenuOpen.value = !overflowMenuOpen.value
+const toggleSidebarMenu = () => {
+  sidebarMenuOpen.value = !sidebarMenuOpen.value
+  if (!sidebarMenuOpen.value) {
+    sidebarViewsOpen.value = false
+  }
+}
+
+const toggleSidebarViews = () => {
+  sidebarViewsOpen.value = !sidebarViewsOpen.value
+}
+
+const toggleSection = (section: ViewFilterOption) => {
+  visibleSections[section] = !visibleSections[section]
+  if (visibleSections[section] && (section === 'enabled' || section === 'disabled')) {
+    collapsed[section] = false
+  }
+  sidebarMenuOpen.value = false
+  sidebarViewsOpen.value = false
+}
+
+const showEnabledView = () => {
+  visibleSections.enabled = true
+  collapsed.enabled = false
+  sidebarMenuOpen.value = false
+  sidebarViewsOpen.value = false
+}
+
+const showDisabledView = () => {
+  visibleSections.disabled = true
+  collapsed.disabled = false
+  sidebarMenuOpen.value = false
+  sidebarViewsOpen.value = false
+}
+
+const setFilterMode = (mode: FilterMode) => {
+  filterMode.value = mode
+  if (mode !== 'all') {
+    sidebarViewsOpen.value = false
+  }
 }
 
 const toggleSkillMenu = (skill: SkillSummary) => {
@@ -770,8 +1030,14 @@ const toggleSkillMenu = (skill: SkillSummary) => {
   openSkillMenuKey.value = openSkillMenuKey.value === key ? '' : key
 }
 
+const showRecommendedMenuNotice = (skill: SkillSummary) => {
+  selectSkill(skill)
+  notice.value = 'Add to repo skills 将在后续实现'
+  openSkillMenuKey.value = ''
+}
+
 const cycleFilterMode = () => {
-  const modes: FilterMode[] = ['all', 'enabled', 'conflict']
+  const modes: FilterMode[] = ['all', 'enabled', 'disabled', 'conflict']
   const nextIndex = (modes.indexOf(filterMode.value) + 1) % modes.length
   filterMode.value = modes[nextIndex]
 }
@@ -779,7 +1045,6 @@ const cycleFilterMode = () => {
 const isConflictSkill = (skill: SkillSummary) => conflictDirectories.value.has(skill.directory.toLowerCase())
 
 const handleOpenFolder = async () => {
-  overflowMenuOpen.value = false
   try {
     await openUserSkillsFolder()
   } catch (error) {
@@ -796,7 +1061,6 @@ const openPlatformLink = async (platform: string) => {
 }
 
 const handleRepairLinks = async () => {
-  overflowMenuOpen.value = false
   repairing.value = true
   notice.value = ''
   try {
@@ -950,12 +1214,12 @@ const openBackup = async (path: string) => {
 }
 
 const openBackupModal = () => {
-  overflowMenuOpen.value = false
   backupModalOpen.value = true
 }
 
 const openRepoModal = () => {
-  overflowMenuOpen.value = false
+  sidebarMenuOpen.value = false
+  sidebarViewsOpen.value = false
   repoModalOpen.value = true
 }
 
@@ -1026,8 +1290,35 @@ const openRepoGithub = (repo: SkillRepoConfig) => {
   openExternal(`https://github.com/${repo.owner}/${repo.name}`)
 }
 
-const goHome = () => {
-  router.push('/')
+const disableAutoUpdateForAll = () => {
+  sidebarMenuOpen.value = false
+  notice.value = t('components.skill.actions.autoUpdateComingSoon')
+}
+
+const setAllEnabled = async (enabled: boolean) => {
+  sidebarMenuOpen.value = false
+  sidebarViewsOpen.value = false
+  const skills = installedGroups.value.flatMap((group) => group.skills).filter((skill) => skill.enabled !== enabled)
+  if (!skills.length) {
+    notice.value = enabled ? t('components.skill.menu.allSkillsAlreadyEnabled') : t('components.skill.menu.allInstalledSkillsAlreadyDisabled')
+    return
+  }
+  try {
+    for (const skill of skills) {
+      await toggleSkill(skill.directory, enabled)
+    }
+    notice.value = enabled ? t('components.skill.menu.enabledAllSkills') : t('components.skill.menu.disabledAllInstalledSkills')
+    await Promise.all([loadGroupedSkills(), loadStatus()])
+  } catch (error) {
+    console.error('failed to toggle all skills', error)
+    skillsError.value = t('components.skill.actions.toggleError')
+  }
+}
+
+const openBisect = () => {
+  sidebarMenuOpen.value = false
+  sidebarViewsOpen.value = false
+  notice.value = t('components.skill.menu.skillBisectComingSoon')
 }
 
 const formatLinkStatus = (status?: string) => {
@@ -1085,7 +1376,7 @@ onMounted(() => {
 .skill-workspace {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   color: var(--mac-text);
 }
 
@@ -1114,8 +1405,8 @@ onMounted(() => {
 .skill-sidebar,
 .skill-detail {
   border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  background: color-mix(in srgb, var(--mac-surface) 90%, transparent);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--mac-surface) 92%, transparent);
+  box-shadow: none;
 }
 
 .sync-strip {
@@ -1278,22 +1569,45 @@ onMounted(() => {
 
 .skill-layout {
   display: grid;
-  grid-template-columns: minmax(330px, 390px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 0;
   min-height: 740px;
 }
 
 .skill-sidebar,
 .skill-detail {
-  border-radius: 26px;
+  border-radius: 0;
   overflow: hidden;
 }
 
+.skill-detail {
+  border-left: 0;
+}
+
 .sidebar-header {
-  padding: 20px 20px 18px;
+  padding: 8px 16px 6px;
   border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--mac-surface-strong) 92%, transparent), color-mix(in srgb, var(--mac-surface) 86%, transparent));
+  background: color-mix(in srgb, var(--mac-surface) 94%, transparent);
+}
+
+.sidebar-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidebar-title {
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mac-text);
+}
+
+.sidebar-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sidebar-tools-row {
@@ -1318,7 +1632,7 @@ onMounted(() => {
   z-index: 20;
   min-width: 190px;
   padding: 6px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
   background: color-mix(in srgb, var(--mac-surface) 96%, transparent);
   box-shadow: 0 20px 36px rgba(0, 0, 0, 0.22);
@@ -1328,15 +1642,55 @@ onMounted(() => {
   top: calc(100% + 8px);
 }
 
+.sidebar-menu-popover {
+  min-width: 260px;
+}
+
+.submenu-popover {
+  top: 0;
+  left: calc(100% + 8px);
+  right: auto;
+  min-width: 210px;
+}
+
 .menu-popover button,
 .row-menu button {
   width: 100%;
-  padding: 9px 10px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   text-align: left;
+  font-size: 0.86rem;
+}
+
+.menu-item-with-submenu {
+  position: relative;
+}
+
+.menu-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.submenu-caret {
+  color: var(--mac-text-secondary);
+}
+
+.menu-check {
+  display: inline-flex;
+  width: 16px;
+  justify-content: center;
+  color: var(--mac-text);
+}
+
+.menu-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: color-mix(in srgb, var(--mac-border) 72%, transparent);
 }
 
 .menu-popover button:hover,
@@ -1352,11 +1706,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
-  padding: 12px 12px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--mac-surface) 78%, transparent);
-  border: 1px solid color-mix(in srgb, #9ec0ff 14%, var(--mac-border));
+  margin-top: 4px;
+  padding: 6px 0 8px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
 }
 
 .search-shell svg {
@@ -1372,6 +1727,7 @@ onMounted(() => {
   outline: none;
   background: transparent;
   color: inherit;
+  font-size: 0.92rem;
 }
 
 .ghost-inline {
@@ -1382,21 +1738,26 @@ onMounted(() => {
 }
 
 .ghost-inline.filter {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mac-surface-strong) 78%, transparent);
+  padding: 0 0 0 8px;
+  border-radius: 0;
+  background: transparent;
+  border-left: 1px solid color-mix(in srgb, var(--mac-border) 64%, transparent);
 }
 
 .sidebar-body {
-  padding: 16px;
+  padding: 0 0 10px;
   max-height: 980px;
   overflow: auto;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--mac-surface) 92%, transparent), color-mix(in srgb, var(--mac-surface-strong) 74%, transparent));
+  background: transparent;
+}
+
+.skill-group-panel {
+  padding: 0;
 }
 
 .skill-group-panel + .skill-group-panel {
-  margin-top: 10px;
+  margin-top: 0;
+  border-top: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
 }
 
 .group-toggle,
@@ -1412,44 +1773,82 @@ onMounted(() => {
 }
 
 .group-toggle {
-  padding: 12px 12px;
-  border-radius: 14px;
-  font-size: 0.8rem;
-  font-weight: 800;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 12px 0 1px;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--mac-text-secondary);
+}
+
+.group-toggle-main {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.group-chevron {
+  display: inline-flex;
+  width: 16px;
+  justify-content: center;
+  color: var(--mac-text-secondary);
+  font-size: 11px;
+  line-height: 1;
+  margin: 0 2px;
+  transition: transform 0.16s ease;
+}
+
+.group-chevron svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
+.group-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 
 .group-toggle:hover,
 .subgroup-toggle:hover {
-  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
+  background: transparent;
 }
 
 .group-badge {
-  min-width: 26px;
-  padding: 2px 8px;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--mac-surface-strong) 82%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
-  font-size: 0.72rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 52%, transparent);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
   text-align: center;
+  color: var(--mac-text-secondary);
+  margin-right: 12px;
 }
 
 .group-body {
-  margin-top: 6px;
+  margin-top: 0;
 }
 
 .subgroup-panel {
-  margin-top: 8px;
-  padding: 10px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--mac-surface) 74%, transparent), color-mix(in srgb, var(--mac-surface-strong) 68%, transparent));
-  border: 1px solid color-mix(in srgb, var(--mac-border) 52%, transparent);
+  margin-top: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
 }
 
 .subgroup-panel.recommended {
-  padding: 10px;
+  padding: 0;
 }
 
 .subgroup-title {
@@ -1461,18 +1860,33 @@ onMounted(() => {
 .subgroup-caret,
 .subgroup-label {
   color: var(--mac-text-secondary);
-  font-size: 0.78rem;
+  font-size: 0.7rem;
+}
+
+.subgroup-toggle,
+.subgroup-label {
+  padding: 8px 0 4px;
+}
+
+.subgroup-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.76rem;
 }
 
 .subgroup-list {
-  margin-top: 8px;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 
 .skill-row-wrap {
   position: relative;
+}
+
+.skill-row-wrap + .skill-row-wrap {
+  margin-top: 0;
 }
 
 .row-menu {
@@ -1480,9 +1894,11 @@ onMounted(() => {
 }
 
 .skill-empty {
-  padding: 26px 20px;
+  padding: 14px 12px;
   text-align: center;
   color: var(--mac-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .skill-empty.compact {
@@ -1495,42 +1911,38 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   color: var(--mac-text-secondary);
 }
 
 .detail-header {
-  padding: 24px 24px 18px;
+  padding: 14px 20px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  background:
-    linear-gradient(180deg, rgba(12, 22, 40, 0.92), rgba(14, 22, 34, 0.92));
+  background: transparent;
 }
 
 .detail-header-main {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   align-items: flex-start;
 }
 
 .detail-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 2px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.9rem;
-  font-weight: 800;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 55%),
-    linear-gradient(145deg, rgba(10, 132, 255, 0.26), rgba(16, 185, 129, 0.22));
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--mac-surface) 68%, rgba(10, 132, 255, 0.08));
+  border: 1px solid color-mix(in srgb, var(--mac-border) 58%, transparent);
 }
 
 .detail-icon.conflict {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.22), transparent 55%),
-    linear-gradient(145deg, rgba(239, 68, 68, 0.38), rgba(245, 158, 11, 0.24));
+  background: color-mix(in srgb, var(--mac-surface) 68%, rgba(239, 68, 68, 0.12));
 }
 
 .detail-copy {
@@ -1539,8 +1951,8 @@ onMounted(() => {
 }
 
 .detail-copy h2 {
-  margin: 0 0 6px;
-  font-size: clamp(1.4rem, 1.8vw, 1.75rem);
+  margin: 0 0 4px;
+  font-size: clamp(1.12rem, 1.35vw, 1.34rem);
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
@@ -1549,9 +1961,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-  font-size: 0.82rem;
+  gap: 5px;
+  margin-bottom: 4px;
+  font-size: 0.76rem;
 }
 
 .detail-publisher {
@@ -1559,81 +1971,117 @@ onMounted(() => {
   color: var(--mac-accent);
 }
 
-.detail-stat-sep {
-  color: color-mix(in srgb, var(--mac-border) 80%, transparent);
-  font-size: 0.75rem;
-}
-
-.detail-stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.detail-meta-sep,
+.detail-meta-status {
   color: var(--mac-text-secondary);
 }
 
-.stat-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+.detail-meta-link {
+  border: 0;
+  background: transparent;
+  color: var(--mac-text-secondary);
+  font-size: 0.8rem;
+  padding: 0;
 }
 
-.detail-stars {
-  color: #e9a12c;
+.detail-meta-link.action {
+  padding: 0 4px;
+  font-size: 0.78rem;
+  line-height: 30px;
+}
+
+.detail-meta-link:hover:not(:disabled) {
+  color: var(--mac-text);
+  text-decoration: underline;
 }
 
 .detail-tagline {
-  margin: 0 0 12px;
-  font-size: 0.92rem;
-  line-height: 1.5;
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
   color: var(--mac-text-secondary);
 }
 
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
   margin-top: 0;
+  align-items: center;
+}
+
+.detail-actions .agent-install-btn,
+.detail-actions .btn-secondary,
+.detail-inline-toggle {
+  height: 28px;
+}
+
+.detail-actions .agent-install-btn,
+.detail-actions .btn-secondary,
+.detail-inline-toggle {
+  opacity: 0.82;
+  font-size: 0.72rem;
+}
+
+.detail-actions .btn-secondary {
+  padding: 0 6px;
+  border-color: transparent;
+}
+
+.detail-actions .btn-secondary:hover:not(:disabled),
+.detail-actions .agent-install-btn:hover:not(:disabled),
+.detail-inline-toggle:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--mac-border) 42%, transparent);
 }
 
 .detail-tabs {
   display: flex;
-  gap: 8px;
-  padding: 0 24px;
+  gap: 0;
+  padding: 0 20px;
   margin: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
+  min-height: 36px;
+  align-items: stretch;
 }
 
 .detail-tabs button {
-  padding: 12px 2px;
-  border-radius: 10px;
+  padding: 0 10px;
+  border-radius: 0;
   border: 1px solid transparent;
   background: transparent;
   color: var(--mac-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 36px;
+  text-transform: uppercase;
 }
 
 .detail-tabs button.active {
   color: var(--mac-text);
-  border-bottom: 2px solid var(--mac-accent);
+  border-bottom: 1px solid var(--mac-accent);
 }
 
 .detail-panel,
 .timeline-item {
-  border-radius: 18px;
+  border-radius: 0;
   border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
-  background: color-mix(in srgb, var(--mac-surface) 88%, transparent);
+  background: transparent;
 }
 
 .detail-panel {
   margin: 20px 24px 24px;
-  padding: 18px;
+  padding: 18px 0 0;
   min-height: 440px;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
 }
 
 .detail-layout-vscode {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 28px;
-  padding: 24px;
+  gap: 18px;
+  padding: 12px 20px 20px;
 }
 
 .detail-content-pane,
@@ -1644,63 +2092,130 @@ onMounted(() => {
 .detail-content-pane {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 0;
 }
 
 .detail-sidebar-vscode {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 16px;
+}
+
+.detail-hero-block {
+  padding: 2px 0 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
+}
+
+.detail-hero-copy {
+  margin: 8px 0 0;
+  max-width: 760px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--mac-text);
 }
 
 .detail-block,
 .side-panel {
-  padding-top: 2px;
+  padding-top: 6px;
   border-top: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
+}
+
+.detail-block {
+  padding-top: 14px;
 }
 
 .detail-block-label,
 .side-panel h3 {
-  margin: 0 0 14px;
-  font-size: 0.78rem;
-  font-weight: 700;
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--mac-text-secondary);
+}
+
+.detail-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.detail-block-kicker {
+  font-size: 0.7rem;
+  color: var(--mac-text-secondary);
+  white-space: nowrap;
 }
 
 .install-command-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 2px 0 10px;
+}
+
+.install-command {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
+  background: color-mix(in srgb, var(--mac-surface) 50%, transparent);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow: auto;
+}
+
+.detail-readme-shell {
+  padding: 2px 0 6px;
 }
 
 .detail-prose {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.65;
-  color: var(--mac-text-secondary);
+  line-height: 1.64;
+  color: var(--mac-text);
   font-family: inherit;
+  padding: 2px 0 4px;
+  font-size: 0.88rem;
+  max-width: 760px;
 }
 
 .side-facts {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   margin: 0;
 }
 
+.side-facts > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--mac-border) 44%, transparent);
+}
+
+.side-facts > div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .side-facts dt {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   color: var(--mac-text-secondary);
-  margin-bottom: 4px;
+  margin: 0;
+  line-height: 1.45;
 }
 
 .side-facts dd {
   margin: 0;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.42;
+  text-align: left;
 }
 
 .side-panel-value {
@@ -1752,15 +2267,53 @@ onMounted(() => {
   flex: 1;
   min-height: 360px;
   resize: vertical;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
-  background: color-mix(in srgb, var(--mac-surface-strong) 90%, transparent);
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--mac-border) 72%, transparent);
+  background: transparent;
   color: var(--mac-text);
-  padding: 14px;
+  padding: 14px 0;
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
   font-size: 0.82rem;
   line-height: 1.5;
   outline: none;
+}
+
+.detail-empty h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--mac-text);
+}
+
+.detail-empty p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--mac-text-secondary);
+}
+
+.detail-inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mac-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.detail-inline-check {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 56%, transparent);
+  display: inline-flex;
 }
 
 .detail-placeholder {
@@ -1788,7 +2341,10 @@ onMounted(() => {
 }
 
 .timeline-item {
-  padding: 14px;
+  padding: 14px 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
 }
 
 .timeline-item-head {
@@ -1825,9 +2381,9 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 4px;
   border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
-  background: color-mix(in srgb, var(--mac-surface-strong) 82%, transparent);
+  background: transparent;
   color: var(--mac-text);
 }
 
@@ -1900,15 +2456,16 @@ onMounted(() => {
 
 .btn-primary,
 .btn-secondary {
-  border-radius: 10px;
-  border: 1px solid transparent;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 68%, transparent);
   padding: 10px 14px;
   font-weight: 700;
 }
 
 .btn-primary {
-  background: color-mix(in srgb, var(--mac-accent) 88%, white 8%);
+  background: color-mix(in srgb, var(--mac-accent) 76%, transparent);
   color: white;
+  border-color: color-mix(in srgb, var(--mac-accent) 48%, transparent);
 }
 
 .btn-primary:disabled,
@@ -1917,7 +2474,7 @@ onMounted(() => {
 }
 
 .btn-secondary {
-  background: color-mix(in srgb, var(--mac-surface-strong) 88%, transparent);
+  background: transparent;
   color: var(--mac-text);
   border-color: color-mix(in srgb, var(--mac-border) 68%, transparent);
 }
@@ -1933,19 +2490,25 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--mac-border) 34%, transparent);
+  border-radius: 4px;
   background: transparent;
   color: var(--mac-text-secondary);
 }
 
 .ghost-icon.sm {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
 }
 
 .ghost-icon:hover {
-  background: color-mix(in srgb, var(--mac-surface) 82%, transparent);
+  background: color-mix(in srgb, var(--mac-surface) 56%, transparent);
+  color: var(--mac-text);
+}
+
+.ghost-icon.active {
+  background: color-mix(in srgb, var(--mac-surface-strong) 84%, transparent);
   color: var(--mac-text);
 }
 
@@ -2079,36 +2642,37 @@ onMounted(() => {
 }
 
 .agent-install-btn {
-  height: 32px;
-  padding: 0 14px;
+  width: 34px;
+  height: 28px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
+  justify-content: center;
+  gap: 4px;
+  border-radius: 2px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--mac-text-secondary);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .agent-install-btn:hover:not(:disabled) {
-  border-color: var(--mac-accent);
-  color: var(--mac-accent);
+  border-color: color-mix(in srgb, var(--mac-border) 42%, transparent);
+  color: var(--mac-text);
 }
 
 .agent-install-btn.installed {
-  background: var(--mac-accent);
-  border-color: var(--mac-accent);
-  color: #fff;
+  background: transparent;
+  border-color: transparent;
+  color: var(--mac-accent);
 }
 
 .agent-install-btn.installed:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--mac-accent) 80%, #000);
-  border-color: color-mix(in srgb, var(--mac-accent) 80%, #000);
-  color: #fff;
+  border-color: color-mix(in srgb, var(--mac-border) 42%, transparent);
+  color: var(--mac-accent);
 }
 
 .agent-install-btn:disabled {
@@ -2116,16 +2680,30 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.btn-agent-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
+.agent-install-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.agent-install-btn.icon-only {
-  width: 36px;
+.agent-install-icon :deep(svg) {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   padding: 0;
-  justify-content: center;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .auto-update-label {
@@ -2134,7 +2712,7 @@ onMounted(() => {
   gap: 6px;
   height: 32px;
   padding: 0 14px;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid color-mix(in srgb, var(--mac-border) 60%, transparent);
   font-size: 0.82rem;
   font-weight: 600;
@@ -2149,38 +2727,50 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.side-icon-links {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.side-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  color: var(--mac-text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
-.side-icon-link {
+.side-resource-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.side-resource-link {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 0;
+  padding: 4px 0;
   border: 0;
   background: transparent;
-  color: var(--mac-accent);
+  color: var(--mac-text-secondary);
   text-align: left;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   cursor: pointer;
 }
 
-.side-icon-link:disabled {
+.side-resource-link:disabled {
   color: var(--mac-text-secondary);
   cursor: default;
+  opacity: 0.72;
 }
 
-.side-icon-link:hover:not(:disabled) {
+.side-resource-link:hover:not(:disabled) {
+  color: var(--mac-accent);
   text-decoration: underline;
 }
 
-.side-icon-link svg {
-  width: 16px;
-  height: 16px;
+.side-resource-link svg {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
